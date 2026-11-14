@@ -1,0 +1,8 @@
+{
+  "_说明": "批注作者。网页按本机 git config user.name 对上 match 里的任一项（小写），自动认出「我是谁」；认不出时在网页上方手动选。label 是显示名，可以改成真名；顺序决定颜色。",
+  "people": [
+    { "id": "andrea",    "label": "Andrea",    "github": "Yingurt001",      "match": ["andrea zhang", "yingurt001"] },
+    { "id": "yyang464",  "label": "yyang464",  "github": "yyang464",        "match": ["yyang464"] },
+    { "id": "charlotte", "label": "Charlotte", "github": "Charlotte-Yan35", "match": ["charlotte-yan35", "charlotte"] }
+  ]
+}
