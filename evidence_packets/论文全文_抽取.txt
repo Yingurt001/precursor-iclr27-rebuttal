@@ -1,0 +1,1763 @@
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+000
+001
+      W HEN E ARLY I S N OT E ARLY: T HE P RECURSOR
+002   I LLUSION IN T IME -S ERIES A NOMALY D ETECTION
+003
+004
+005    Anonymous authors
+006    Paper under double-blind review
+007
+008
+009                                               A BSTRACT
+010
+011            Early anomaly warning requires both detectable evidence before event onset and
+012            an alarm that exploits that evidence. Yet common evaluations define pre-onset
+013            targets by temporal proximity and apply point adjustment, allowing reactive de-
+014            tections to receive credit as apparent predictions. We term this failure mode the
+015            precursor illusion. We introduce a model-agnostic, placebo-calibrated framework
+016            that first tests whether pre-onset intervals are distinguishable from matched nor-
+017
+               mal operation, then tests whether frozen causal detector scores exploit the certi-
+               fied evidence, and finally isolates evaluation effects while preserving scores and
+018
+               thresholds. The test detects evidence in 43 of 47 independently annotated transi-
+019
+               tions in the 3W dataset, yet across five benchmarks it identifies pre-onset devia-
+020            tions in only 70 of 500 evaluable events, revealing sparse and dataset-dependent
+021            evidence within the specified descriptor family. Mean detector scores achieve
+022            above-chance discrimination between precursor and matched normal windows in
+023            none of the 35 model–dataset combinations after multiple-testing correction, and
+024            only the near-onset score peaks of LSTM-VAE separate SMD precursor windows
+025            beyond a selection control, although all seven evaluated models distinguish the
+026            3W transitions from normal operation. Point adjustment raises mean pre-onset
+027            Shifted-warning F1 from 0.036 to 0.177 without changing any alarm time, and
+028
+               input-blind alarms at matched rates obtain higher adjusted F1 than every detector.
+               These results show that benchmark warnability must be established independently
+029
+               before early-warning models are ranked.
+030
+031
+032   1   I NTRODUCTION
+033
+034   Time-series anomaly detectors typically operate reactively and score deviations that are already
+035   observable at or after event onset (Xu et al., 2022; Tuli et al., 2022; Song et al., 2023; Wang et al.,
+036   2023; Feng et al., 2024; Wang et al., 2024; Wu et al., 2025; Zamanzadeh Darban et al., 2024).
+037   Early-warning approaches instead aim to raise an alarm before the onset time te , using only the
+038
+      observations available at the alarm time, so that operators have time to intervene (You et al., 2024;
+      Hu et al., 2024; Park et al., 2025; Lee et al., 2023; Chen et al., 2025). Such an alarm is possible only
+039
+      if the pre-onset interval contains observable evidence that distinguishes an approaching event from
+040
+      normal operation. Following work on early-warning signals for critical transitions, we refer to this
+041   evidence as a precursor (Scheffer et al., 2009; Bury et al., 2021; 2023; Huang et al., 2024).
+042
+043   However, a common evaluation protocol labels the time steps just before each event onset as positive
+044
+      (Zhao et al., 2024; Kang et al., 2026). An alarm raised in this period then counts as an early warning,
+      whether or not the data in the period differ from normal operation. The protocol thus assumes that
+045
+      every event is preceded by a precursor, without testing this assumption.
+046
+047   Another common evaluation practice further compounds this problem. Point adjustment counts an
+048   entire positive segment as detected if an alarm occurs anywhere within it (Su et al., 2019; Zhao
+049   et al., 2024; Lee et al., 2023; Kim et al., 2022; Wu & Keogh, 2023; Sarfraz et al., 2024; Wagner
+050
+      et al., 2023). When labels extend into the pre-onset period, a single post-onset hit can credit the
+      entire extended segment. Figure 1 illustrates the resulting precursor illusion: a reactive detection
+051
+      can receive prediction credit without establishing both detectable precursor evidence and a pre-onset
+052
+      alarm.
+053
+      These observations motivate three research questions:
+
+
+                                                         1
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+054
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+      Figure 1: The precursor illusion. Genuine warning requires detectable evidence and a pre-onset
+      alarm. A late alarm is reactive even when a precursor exists. Under an extended-label protocol,
+069
+      point adjustment (PA) can credit pre-onset points from a post-onset hit.
+070
+071
+          RQ1. Benchmark warnability. Do widely used benchmarks contain detectable precursor evi-
+072
+               dence, and how far before event onset can such evidence be detected?
+073
+074
+          RQ2. Model use of precursor evidence. For events identified as precursor-positive by the test,
+               can frozen causal detector scores distinguish precursor windows from matched normal win-
+075
+               dows?
+076
+077       RQ3. Evaluation-protocol effects. With detector scores and thresholds held fixed, to what extent
+078
+               do shifting the evaluation target from the post-onset interval to a disjoint pre-onset interval
+               and applying point adjustment alter reported F1?
+079
+080
+      The main contributions are summarized as follows:
+081
+082           • We formalize the distinction between precursor existence and alarm timing, and show why
+083             extending anomaly labels into the pre-onset period and applying point adjustment are in-
+084             sufficient to establish genuine early warning.
+085           • We propose a model-agnostic, placebo-calibrated test for precursor detectability that uses a
+086             prespecified descriptor family to evaluate whether pre-onset intervals at different lead times
+087             contain evidence distinguishable from same-entity normal operation.
+088           • We introduce matched-window precursor AUC (MPA) to assess whether frozen causal de-
+089             tector scores exploit certified precursor evidence. We further develop a trace- and threshold-
+090             preserving comparison that isolates the effects of evaluation targets and detection-credit
+091             rules.
+092           • We conduct the first systematic characterization of the warnability limits of existing early-
+093             warning benchmarks, revealing sparse and dataset-dependent precursor evidence, score
+094             separation confined to near-onset peaks and a separate per-machine setting, and system-
+095             atic F1 inflation under point adjustment.
+096
+097   2     R ELATED W ORK
+098
+099   2.1     R EACTIVE T IME -S ERIES A NOMALY D ETECTION
+100
+101   Time-series anomaly detection identifies observations or intervals that deviate from normal behavior.
+102
+      Established families include isolation-based methods (Liu et al., 2008), reconstruction models (Park
+      et al., 2018; Audibert et al., 2020), density-estimation approaches (Zong et al., 2018; Su et al.,
+103
+      2019), and temporal-association models (Xu et al., 2022). Recent work further develops recurrent
+104
+      and attention-based memory, temporal decomposition, cross-channel dependency modeling, and
+105   frequency-domain representations (Tuli et al., 2022; Song et al., 2023; Wang et al., 2023; Feng
+106   et al., 2024; Wang et al., 2024; Wu et al., 2025; Zamanzadeh Darban et al., 2024).
+107
+
+
+
+                                                          2
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+108
+      Despite architectural differences, most detectors remain reactive under standard online evaluation:
+109   the score at time t reflects observations available only up to that time. They can establish detectabil-
+110   ity once anomalous manifestations emerge, but performance near or after onset does not show that a
+111   usable warning signal existed beforehand. Forecast-error detectors face the same limitation because
+112   prediction errors can be computed only after the target observation arrives. Conventional detection
+113   accuracy therefore does not establish pre-onset warnability.
+114
+115   2.2   E ARLY A NOMALY WARNING AND P RECURSORS
+116
+      Early anomaly-warning methods instead infer future abnormality from pre-onset observations. Ex-
+117
+      isting approaches include precursor detection, modeling of warning delays and horizons, forecasting
+118   future observations or anomaly states, and learning pre-onset representations (You et al., 2024; Zhao
+119   et al., 2024; Hu et al., 2024; Kang et al., 2026; Park et al., 2025; Lee et al., 2023; Chen et al., 2025).
+120   Some methods derive warnings from forecasts, whereas others construct event-relative targets by
+121   extending anomaly labels before onset or labeling sampled pre-onset windows as positive.
+122
+      Research on critical transitions shows that rising autocorrelation, increasing variance, and learned
+123
+      dynamical signatures may precede certain state changes (Scheffer et al., 2009; Bury et al., 2021;
+124   2023; Huang et al., 2024). However, their presence, form, and detectable horizon are system-
+125   dependent. Early-warning targets are often defined by temporal position, while their distinguisha-
+126   bility from normal operation is not independently verified. Performance on such targets therefore
+127   does not necessarily demonstrate detectable precursor evidence.
+128
+129   2.3   E VALUATION M ETRICS AND B ENCHMARK VALIDITY
+130
+      Time-series anomaly-detection evaluation has received increasing scrutiny. Pointwise F1 poorly rep-
+131
+      resents interval-valued anomalies, whereas point adjustment may substantially inflate performance
+132
+      by counting an entire segment as detected after a single hit (Kim et al., 2022; Sarfraz et al., 2024;
+133   Wagner et al., 2023). Range-, affiliation-, volume-, soft-matching-, and proximity-based metrics
+134   have been proposed to capture overlap, fragmentation, tolerance, and detection delay (Huet et al.,
+135   2022; Paparrizos et al., 2022a; Ghorbani et al., 2024; Salles et al., 2024; Sørbø & Ruocco, 2024).
+136   These metrics refine how predictions are counted once a target interval is accepted, but do not estab-
+137   lish whether that interval contains detectable information.
+138
+      Benchmark studies have also identified duplicated or trivial segments, contaminated training data,
+139   inconsistent annotations, and unstable model rankings (Wu & Keogh, 2023; Liu & Paparrizos, 2024;
+140   Paparrizos et al., 2022b; Wagner et al., 2023). Their focus, however, remains benchmark reliability
+141   after abnormal behavior becomes observable. Whether designated pre-onset intervals contain de-
+142   tectable evidence before the annotated event begins remains insufficiently examined, limiting the
+143   interpretation of both model performance and evaluation metrics in early anomaly warning.
+144
+145   3     M ETHODOLOGY
+146
+147   Our evaluation follows three stages aligned with RQ1–RQ3. Benchmark evidence is tested first,
+148   frozen scores are then evaluated on the resulting event strata, and evaluation targets and scoring
+149   rules are finally varied while scores, normalization, and thresholds remain fixed. This ordering
+150   keeps the evidence for benchmark warnability independent of model performance.
+151
+      3.1   P ROBLEM S ETTING
+152
+                                  (i)
+153   For a multivariate series x1:Ti ∈ RTi ×Ci from entity i, event e is a maximal labeled interval Ae =
+154   [te , ue ] with onset te . Its width-W candidate precursor interval is Pe (W ) = [te − W, te ). Unless
+155   stated otherwise, Pe = Pe (100) for the five benchmarks, and 3W uses its annotated transition stage.
+156
+      The normal pool Ni contains only labeled-normal points at least Hguard steps from every event and
+157
+158
+      is partitioned as Ni = Nifit ∪˙ Ninull ∪˙ Niver . The three subsets estimate normal descriptor distri-
+      butions, construct the placebo null, and verify its held-out rejection rate, respectively. Candidate
+159
+      intervals overlapping an annotated anomaly are excluded and reported as NA.
+160
+161   At scale w ∈ S = {25, 50} and lead ℓ ≥ 0, the precursor detectability test compares the candidate
+      interval Qe (w, ℓ) = [te − ℓ − w, te − ℓ) with its preceding reference Re (w, ℓ) = [te − ℓ − 2w, te −
+
+
+                                                          3
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173   Figure 2: Precursor detectability test. Descriptor changes and deviations from the normal regime
+174   are compared with a same-entity placebo null. Candidate and reference windows use no post-onset
+175   samples; the evaluated detectors do not enter the test.
+176
+177   ℓ − w). The primary event taxonomy is defined at ℓ = 0. Since wmax = 50, the largest pair spans
+178   the same 100-step interval used in matched-window model evaluation.
+179                                                         (i)
+180
+      A detector produces the causal score si (t) = f (x1:t ) and alarm ai (t; τi ) = 1[si (t) > τi ]. The
+      threshold τi and all normalization statistics are fitted using normal-only data. Alarms in Pe are
+181
+      warnings, whereas alarms in Ae are post-onset detections.
+182
+183
+      3.2   RQ1: P RECURSOR D ETECTABILITY
+184
+185   An early-warning benchmark rewards alarms raised within its pre-onset intervals, so each such inter-
+186   val should contain evidence that separates it from normal operation. The precursor detectability test
+187   checks this requirement before any detector is evaluated, using only the benchmark data, the anno-
+188   tated onsets, and matched normal windows from the same entity. At each lead, the test compares the
+189
+      candidate with matched normal windows independently of all evaluated detectors. The descriptor
+      vector ϕ(I) ∈ R12 stacks mean level, dispersion, slope, jump energy, autocorrelation, and cross-
+190
+      channel correlation at the two scales, each reduced to a root-mean-square over channels. Rising
+191
+      dispersion and lag-1 autocorrelation are the classical early-warning indicators of critical slowing
+192   down (Scheffer et al., 2009), and the remaining descriptors capture shifts in level, trend, abrupt
+193   jumps, and cross-channel coupling. The change ∆j (Qe , Re ) is the root-mean-square over channels
+194   of the change in descriptor j from Re to Qe . Normal-only fit data estimate its median mj and spread
+195     (0)
+      σ
+      ˆ︁j (95th percentile minus median), the mean µi of ϕ, and a shrinkage-regularized covariance Σ   ˜︁ i .
+196                −8
+      With ε = 10 , the composite statistic is
+197
+198
+                                               ∆j (Qe , Re ) − mj
+                             Tchange,e = max           (︂         )︂ ,
+                                            j               (0)
+199                                             max σ     ˆ︁j , ε
+200                                                                               ]︂1/2                 (1)
+                                                            ⊤ ˜︁ −1
+                                         [︂
+201                             Tdev,e = (ϕ(Qe ) − µi ) Σ        i (ϕ(Qe ) − µi )       ,
+202
+203                                Te = max (Tchange,e , Tdev,e ) .
+204   The two branches capture local changes and departures from the normal regime. An identical multi-
+                                                                                 (0)
+205   scale calculation at M0 pseudo-onsets in Ninull yields placebo statistics Ti,m . Under event–placebo
+206   exchangeability, the empirical p-value and verdict are
+207
+                                            [︂          ]︂
+                                  ∑︁M0         (0)
+                              1 + m=1     1 Ti,m ≥ Te
+208
+                       pe,ℓ =                              ,    De (ℓ; α) = 1 [pe,ℓ ≤ α] .              (2)
+209                                     M0 + 1
+210
+211
+      Under event–placebo exchangeability, the null rejection probability is at most α; overlapping win-
+      dows and operating-mode drift may violate this assumption. The held-out pool Niver estimates the
+212                                         (0)
+213   empirical placebo rejection rate rˆ︁d . For each dataset and lead, the test reports the event rejection
+                                                      (0)
+214   rate rˆ︁d,ℓ and its excess ηˆ︁d,ℓ = rˆ︁d,ℓ − rˆ︁d . Events of one entity share a calibration and neigh-
+215   bouring verification windows overlap, so the dataset-level test resamples entities for multi-entity
+      datasets and events otherwise, propagates placebo-rate uncertainty through an effective pool size
+
+
+                                                        4
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+216
+      approximated from the stride and window length, and computes one-sided bootstrap p-values with
+217   Benjamini–Hochberg correction over the dataset–lead grid. For PSM and SWaT, these p-values rely
+218   on an independent-event approximation; sensitivity to the effective pool size is reported in Appendix
+219   B.2.2.
+220
+      At ℓ = 0, events with detectable pre-onset evidence are assigned to P. Remaining events are assigned
+221
+      to I if equal-length post-onset support is detectable, or O otherwise. Invalid intervals are NA. RQ2
+222
+      contrasts P with NoP = I ∪ O. Placebo-adjusted P counts subtract expected null discoveries from
+223   raw counts and estimate at the dataset level how many events carry detectable evidence.
+224
+225   3.3   RQ2: M ATCHED -W INDOW P RECURSOR D ISCRIMINATION
+226
+227   For each event e, frozen causal scores are averaged over the candidate Pe and Mc equal-length same-
+228   entity normal controls Ce,m , giving sP        C
+                                             e and se,m . MPA is the probability that a precursor window
+229   scores above a matched normal window, with ties counted as one half, which makes it the paired
+230
+      analogue of AUC:
+                                                Mc (︃                                    )︃
+231                                   1 ∑︂ ∑︂                       ]︁ 1 [︁ P
+                                                      1 sP      C                  C
+                                                       [︁                              ]︁
+232                   MPA(E) =                            e >  se,m   +   1 s e = se,m      .         (3)
+                                   |E|Mc       m=1
+                                                                        2
+                                           e∈E
+233
+234   Paired-window exchangeability implies E[MPA] = 0.5, including for constant scores. For test-
+235   selected P events, MPAP measures score separation from matched normal windows; MPANoP and
+236   ∆MPA = MPAP − MPANoP provide comparisons with NoP events. Tests randomize at the event
+237   level, and confidence intervals bootstrap events and matched controls. Because the test can locate
+238   evidence within the final steps of Pe , MPA is also reported with window maxima over the final
+239
+      L ∈ {10, 25, 50} steps of Pe and of each control. Because the test selects windows that deviate
+      from normal operation, a detector that scores such deviations can separate the selected windows
+240
+      without using a precursor. Test-positive held-out normal windows therefore serve as pseudo-events,
+241
+      and their MPA is compared with that of P events to assess whether the observed separation can be
+242   explained by test selection alone. MPA measures discrimination, while RQ1 determines the evidence
+243   horizon.
+244
+245   3.4   RQ3: T RACE -P RESERVING P ROTOCOL C OMPARISON
+246
+247   In post hoc detection, point adjustment tolerates small misalignments between an annotated anomaly
+248   segment and the alarms raised inside it (Su et al., 2019; Kim et al., 2022). Within a post-onset seg-
+249
+      ment, a single alarm shows that the detector responded to the anomaly, which makes this tolerance
+      appropriate for detection. Our concern is the transfer of credit across the onset. A test-supported
+250
+      warning requires both De = 1 and an alarm in Pe ; extending a target to Pe ∪ Ae alone establishes
+251
+      neither condition. Under PA on the merged target Pe ∪ Ae , an alarm raised after the anomaly has
+252   begun marks the preceding interval as warned. RQ3 evaluates PA only as a credit rule for early
+253   warning.
+254
+255
+      To isolate these effects, RQ3 freezes scores, normalization, and normal-only thresholds. The De-
+      tection target is Ae , the Shifted-warning target is the disjoint Pe , and the Merged target is Pe ∪ Ae .
+256
+      Each PA variant expands a hit only within its own target, and every protocol is compared with input-
+257
+      blind alarms drawn at each detector’s own alarm rate. Detection and Shifted-warning PA measure
+258   within-segment inflation; Merged PA directly tests whether post-onset hits receive pre-onset credit.
+259   Thus target choice and credit assignment change, but detector outputs do not. Appendix A gives the
+260   full definitions and failure-mode analysis.
+261
+262   4     E XPERIMENTS
+263
+264   Experiment overview Section 4.1 validates the framework on known ground truth, Sections 4.2–
+265   4.3 evaluate benchmark warnability and model use of test-identified evidence, and Section 4.4 iso-
+266   lates the effects of evaluation targets and point adjustment (PA).
+267
+268   Datasets We use SMD (Su et al., 2019), MSL and SMAP (Hundman et al., 2018), SWaT (Goh
+269   et al., 2016), and PSM (Abdulaal et al., 2021). These five benchmarks contain 537 annotated
+      anomaly events. They define event onset and duration but not whether the preceding normal-labeled
+
+
+                                                         5
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+270
+      interval contains a precursor, which is therefore evaluated using the test in Section 3.2. The 3W
+271   dataset (Vargas et al., 2019) is used only as an external positive control because it explicitly labels a
+272   transitional stage associated with fault development.
+273
+274   Baselines Seven representative methods span isolation, reconstruction, density estimation, associ-
+275   ation, and forecasting: iForest (Liu et al., 2008), LSTM-VAE (Park et al., 2018), DAGMM (Zong
+276   et al., 2018), USAD (Audibert et al., 2020), Anomaly Transformer (Xu et al., 2022), Future Con-
+277   text Modeling (FCM) (Zhao et al., 2024), and Anomaly to Prompt (A2P) (Park et al., 2025). The
+278   first five assign abnormality scores to causal input windows, whereas FCM and A2P forecast future
+279   abnormality. A constant scorer verifies the input-blind chance guarantee of MPA.
+280
+281   Implementation details Scores are causal and aligned to the end of each input window. Normal-
+282   ization and threshold selection use normal-only data. Table 1 summarizes the prespecified settings
+283
+      affecting the test verdict. Every protocol reuses the same saved score trace, and a cell is reported
+      only when its trace, configuration, and dataset manifest are available.
+284
+285                     Table 1: Prespecified precursor-test and evaluation configuration.
+286
+              Component     Primary setting
+287
+              Features      level, spread, slope, jumps, lag-1 autocorrelation, cross-channel correlation
+288           Windows       w = {25, 50}; ten leads from 0 to 200
+289           Controls      same entity; cap 800; stride 5; lookback 100; guard 50; minimum 120 windows
+290           Calibration   disjoint fit/null/verification; α = 0.05; entity bootstrap; BH over 50 lead cells
+291           Covariance    shrinkage 0.10; ridge 10−6
+292           MPA/F1        20 controls; mean-score MPA; normal-score 95th percentile
+293
+294
+      The threshold is fixed at the 95th normal-score percentile, a nominal 5% false-alarm rate. One
+      sample is one minute in SMD, MSL, SMAP, and PSM, but one second in SWaT (Su et al., 2019;
+295
+      Goh et al., 2016; Abdulaal et al., 2021). Results report leads in each dataset’s time unit.
+296
+297
+      4.1   P ROTOCOL VALIDITY
+298
+299   Setup The test uses 500 null trials and 500 trials for each of eight precursor morphologies at four
+300   strengths. MPA uses 500 simulated events per cell with 20 matched controls and compares constant,
+301   random, time-only, and post-onset-only scores with a precursor-aware score that receives increasing
+302   fractions of the injected signal. No learned model or benchmark label enters this validation.
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320   Figure 3: Controlled protocol validity. (a) Calibration and power of the precursor detectability
+321
+      test for five of eight tested morphologies. (b) Input-blind scores remain near MPA 0.5, whereas
+      precursor-aware MPA increases with available evidence. Shading and bars denote event-level 95%
+322
+      intervals.
+323
+
+
+
+                                                            6
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337   Figure 4: Benchmark warnability. (a) Excess over the held-out placebo rate at onset. (b) Excess at
+338   earlier leads. Horizontal bars are 95% bootstrap intervals, resampling entities for SMD, MSL, and
+339   SMAP and events for PSM and SWaT. Filled markers and asterisks denote BH q < 0.05. Heatmap
+340   entries are excess percentage points.
+341
+342   Results Figure 3 shows that the test is calibrated and that MPA orders scores from chance to full
+343
+      information. The null rejection rate is 0.060 [0.042, 0.084], and at full strength power exceeds 0.95
+      for seven of the eight morphologies, with nonlinear dependence the hardest case at 0.79. Every
+344
+      input-blind score stays near 0.5, and precursor-aware MPA rises from 0.487 to 0.982. The test
+345
+      also recovers real precursors, detecting evidence in 43 of 47 annotated 3W transitions at a held-out
+346   placebo rate of 0.050. The verdict depends only on the observed history, since pairing identical pre-
+347   onset histories with a benign or a faulty future leaves every p-value unchanged. An onset continuity
+348   check identifies 94.5% of onsets annotated five steps late, the case that turns 93% of precursor-free
+349   synthetic events into apparent precursors, whereas an early annotation leaves the rate at the placebo
+350   level. Detailed results are provided in Appendix B.1.
+351
+352   4.2    B ENCHMARK WARNABILITY
+353
+      Setup Results are reported at three levels, event verdicts, placebo-adjusted counts, and corrected
+354
+      dataset tests. Of the 537 annotated events, 500 are eligible and are assigned to P, I, or O, and the
+355   multiscale pair moves by ℓ ∈ {0, 10, 20, 30, 40, 50, 75, 100, 150, 200} steps before onset. Within
+356   each entity, disjoint normal windows fit the descriptors, build the split-conformal null, and verify
+357   the held-out false-positive rate. A bootstrap that resamples entities for SMD, MSL, and SMAP and
+358   events for PSM and SWaT, with Benjamini–Hochberg correction across 50 dataset–lead cells, tests
+359   the excess. Robustness runs add spectral entropy, lagged cross-correlation, and quadratic depen-
+360   dence, and vary scale, pool size, shrinkage, guard size, and channel selection one at a time.
+361
+362   Results Figure 4 and Table 2 show that the test detects pre-onset deviations in a small fraction
+363   of events. It identifies 70 P events among 500, about 49 above the placebo expectation; under the
+364   primary bootstrap procedure, only SMD at onset and SWaT at 10 seconds remain significant after
+365
+      correction. Of the 293 events with a test-detected change, 223 are positive only on the post-onset
+      support.
+366
+367         Table 2: Event taxonomy at onset. Common P events have scores from all seven detectors.
+368
+      Dataset        Eligible      P         I        Rejection at onset      Placebo rate      Common P
+369
+      SMD                320      51       156                    0.159             0.047             49
+370
+      MSL                 35       1        16                    0.029             0.046              1
+371   SMAP                67       2        26                    0.030             0.045              2
+372   PSM                 45       7        20                    0.156             0.034              6
+373   SWaT                33       9         5                    0.273             0.037              9
+374   Total              500      70       223                                                        67
+375
+376   The evidence is also short-lived. On SMD, the rejection rate halves within ten minutes of onset and
+377   approaches the placebo level by 50 minutes. On 3W, it stays above 0.91 at every lead up to 200
+      seconds, so the test recovers evidence far from onset when it exists. SWaT is the only benchmark
+
+
+                                                       7
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+378
+      Table 3: Mean-score MPA (chance: 0.5) and F1 with fixed scores and thresholds. For dataset-wise
+379   MPA, bold marks BH-adjusted q < 0.05; MSL/SMAP are omitted (n < 5). Benchmark MPAP
+380   weights common P events from all five benchmarks equally, excluding 3W.
+381
+                                      Mean-score MPA                                 F1 protocols
+382
+                   3W      SMD     PSM     SWaT Benchmark
+383
+      Model     (n = 48) (n = 49) (n = 6) (n = 9) MPAP                     Det. Det.+PA Shift. Shift.+PA
+384
+      iForest       0.906   0.553   0.675   0.467    0.551                0.283   0.676 0.047      0.193
+385   DAGMM         0.942   0.544   0.525   0.467    0.547                0.241   0.652 0.040      0.235
+386   USAD          0.996   0.471   0.417   0.378    0.459                0.114   0.440 0.038      0.203
+387   LSTM-VAE      0.991   0.534   0.567   0.367    0.524                0.270   0.719 0.045      0.264
+388   AnomTrans     0.681   0.500   0.500   0.389    0.475                0.010   0.452 0.007      0.207
+389
+      FCM           1.000   0.431   0.550   0.328    0.447                0.213   0.503 0.037      0.075
+      A2P           0.943   0.573   0.175   0.350    0.507                0.123   0.415 0.040      0.060
+390
+391
+392
+      with more P events than I events, but the significance of its 10-second result depends on the effective
+      placebo-pool size (Appendix B.2.2).
+393
+394   These patterns hold under checks on the onset and on the test. SMD evidence remains significant at
+395   the unadjusted level after the final five minutes are removed, 74.5% of SMD P events show a distinct
+396   jump at the annotated onset, and an expanded descriptor set leaves the P events of four datasets
+397   unchanged. Detailed results are provided in Appendices B.1 and B.2.
+398
+399
+      4.3   M ODEL P RECURSOR D ISCRIMINATION
+400   Setup Each frozen score is evaluated on the P interval against equal-length normal windows from
+401   the same entity, and 3W uses its annotated transition. Of the 70 P events, 67 have scores from all
+402   seven detectors and form the common P set. MPA is computed separately for P and NoP events with
+403   event-level randomization and BH correction across all model–dataset cells. Cells with fewer than
+404   five P events are not interpreted. FCM and A2P are trained specifically for early warning.
+405
+406   Results Table 3 shows that none of the 35 benchmark mean-score comparisons is significant after
+407   correction, and on SMD the contrasts between P and NoP events also remain nonsignificant after
+408   correction. All seven detectors distinguish the annotated 3W transitions from normal controls, with
+409
+      MPA of at least 0.68. The minimum MPA detectable with 80% power on SMD is about 0.60 without
+      correction and 0.66 with Bonferroni correction, and the upper 95% bound of mean-score MPA on
+410
+      SMD P events is at most 0.656 for every detector.
+411
+412   Additional score separation appears in two SMD settings. Normal windows flagged by the test
+413   already raise MPA, so separation specific to precursor windows must exceed this selection level.
+414   LSTM-VAE does so with near-onset score peaks, 0.743 against 0.630, consistent with evidence
+415
+      confined to the final minutes before onset. In a separate per-machine experiment with a train-only
+      normal reference, iForest reaches 0.861 on its 92 P events against 0.655 on test-positive normal
+416
+      windows. This experiment also changes the normal reference and the selected events, so it does not
+417
+      isolate the effect of training. FCM and A2P, trained for early warning, reach 1.000 and 0.943 on 3W
+418   but stay near chance on benchmark P events. Detailed results are provided in Appendix B.3.
+419
+420   4.4   P ROTOCOL C OMPARISON
+421
+422   Setup A threshold at the 95th or 99th percentile of normal scores is reused across targets, and
+423   a warning counts toward recall only when a new alarm episode starts before onset. For the seven
+424   pooled-trained detectors, F1 is pooled within each dataset and macro-averaged across datasets.
+425
+426
+      Results Figure 5 and Table 3 show that PA inflates warning F1 without producing earlier alarms.
+      For per-machine iForest traces, merged F1 more than doubles under PA while recall of newly issued
+427
+      alarms stays unchanged, and about a quarter of the credited events contain no alarm before onset.
+428
+      Across the seven pooled-trained detectors, PA raises mean Shifted-warning F1 from 0.036 to 0.177,
+429   and 20% to 46% of merged-target hits receive warning credit solely from post-onset alarms. Early
+430   recall shows the same effect, reaching 98.8% for a random score against 62.8% for iForest at a
+431   similar alarm-episode rate, so early recall alone also rewards frequent alarms.
+
+
+                                                        8
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+432
+433
+434
+435
+436
+437
+438
+439
+440
+441
+442
+443
+444   Figure 5: Credit transfer across onset on SMD with per-machine iForest traces. (a, b) F1 under the
+445   Detection, Shifted, and Merged targets with and without PA at two normal-score thresholds. (c)
+446   Recall of newly issued alarm episodes that start at least the given lead before onset.
+447
+               Table 4: Mean F1 under PA for detectors and input-blind alarms at matched rates.
+448
+449   Target                      Detectors              Random alarms               Circularly shifted alarms
+450   Shifted warning                0.177                       0.431                                   0.167
+451
+      Merged                         0.570                       0.788                                   0.497
+452
+453   The inflation depends on the alarm rate. At a 5% pointwise rate, independent alarms hit a 100-
+454
+      step interval with probability about 0.99, and Table 4 shows that such input-blind alarms reach an
+      adjusted Shifted-warning F1 of 0.431, above every detector. Circularly shifted alarms, which keep
+455
+      each detector’s alarm runs, obtain adjusted F1 close to the detectors on the Shifted target and lower
+456
+      on the Merged target, and without PA detectors match random alarms at the same rate to within 0.002
+457   across the tested settings. On 3W, where precursors are present, detectors already alarm before onset,
+458   and PA changes Shifted-warning F1 by less than 0.03 for six of the seven detectors, whereas on the
+459   benchmarks it raises this F1 about fivefold. Detailed results are provided in Appendix B.4.
+460
+461   5   L IMITATIONS AND F UTURE W ORK
+462
+463   A negative result does not rule out predictive information outside the specified descriptor family; a
+464   positive result indicates a deviation from the normal reference, not necessarily a fault-specific pre-
+465   cursor. The test applies to entities whose normal operation is stationary. Entities that switch between
+466   operating modes require placebo windows matched to the current mode, as the drift of normal op-
+467   eration before the annotated 3W transitions in Appendix B.1 illustrates. The seven detectors were
+468   trained on pooled entities, and the per-machine experiment for iForest on SMD changes training,
+469
+      the normal reference, and the selected events together. Future work will separate these three factors,
+      extend the descriptor set, develop mode-aware placebo matching, evaluate additional benchmarks
+470
+      with explicit transition annotations, combine MPA with event-level timeliness measures, and extend
+471
+      the test from onset-aligned windows to continuous scanning of all endpoints.
+472
+473
+474
+      6   C ONCLUSION
+475
+      Early warning requires detectable pre-onset evidence and a pre-onset alarm. The placebo-calibrated
+476
+      test identifies deviations in 70 of 500 eligible events across five benchmarks and 43 of 47 indepen-
+477   dently annotated 3W transitions; 223 of 293 benchmark events with detected changes are positive
+478   only on post-onset support. Near-onset peaks and a separate per-machine SMD setting reveal sep-
+479   aration missed by the primary mean-score comparison. With scores and thresholds fixed, PA raises
+480   warning F1 without improving alarm timing or precursor discrimination; it adds little on 3W, where
+481   detectors already alarm before onset. Evaluation should characterize benchmark warnability under
+482   an explicit evidence definition before model comparison and jointly assess precursor discrimination
+483   and alarm timeliness. The framework separates precursor existence, detector response, and credit
+484   for pre-onset alarms.
+485
+
+
+
+                                                        9
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+486
+      R EPRODUCIBILITY S TATEMENT
+487
+488   The paper specifies the event construction, placebo calibration, statistical tests, correction families,
+489   score alignment, thresholds, and all primary evaluation settings. Appendix A provides the complete
+490   estimands and derivations. The supplementary material contains the code used for the reported
+491   experiments and diagnostic analyses.
+492
+493   AI U SE S TATEMENT
+494   Generative AI was used for language editing and presentation assistance. All scientific content,
+495   analyses, results, and conclusions were produced and verified by the authors.
+496
+497
+      R EFERENCES
+498
+499   Ahmed Abdulaal, Zhuanghua Liu, and Tomer Lancewicki. Practical approach to asynchronous
+500     multivariate time series anomaly detection and localization. In KDD, 2021.
+501
+      Julien Audibert, Pietro Michiardi, Frédéric Guyard, Sébastien Marti, and Maria A. Zuluaga. Usad:
+502     Unsupervised anomaly detection on multivariate time series. In KDD, 2020.
+503
+504   Thomas M. Bury, R. I. Sujith, Induja Pavithran, Marten Scheffer, Timothy M. Lenton, Madhur
+505     Anand, and Chris T. Bauch. Deep learning for early warning signals of tipping points. Proceed-
+506     ings of the National Academy of Sciences, 118(39), 2021.
+507   Thomas M. Bury, Daniel Dylewsky, Chris T. Bauch, Madhur Anand, Leon Glass, Alvin Shrier, and
+508     Gil Bub. Predicting discrete-time bifurcations with deep learning. Nature Communications, 14:
+509     6331, 2023.
+510
+511   PengYu Chen, Xiaohou Shi, Yuan Chang, Yan Sun, and Sajal K. Das. RED-F: Reconstruction-
+512
+        elimination based dual-stream contrastive forecasting for multivariate time series anomaly pre-
+        diction. arXiv preprint arXiv:2511.20044, 2025.
+513
+514   Yuye Feng, Wei Zhang, Yao Fu, Weihao Jiang, Jiang Zhu, and Wenqi Ren. Sensitivehue: Multivari-
+515     ate time series anomaly detection by enhancing the sensitivity to normal patterns. In KDD, pp.
+516     782–793, 2024.
+517
+      Ramin Ghorbani, Marcel J. T. Reinders, and David M. J. Tax. Pate: Proximity-aware time series
+518
+        anomaly evaluation. In KDD, pp. 872–883, 2024.
+519
+520   Jonathan Goh, Sridhar Adepu, Khurum Nazir Junejo, and Aditya Mathur. A dataset to support
+521     research in the design of secure water treatment systems. In International Conference on Critical
+522     Information Infrastructures Security, 2016.
+523
+      Shiyan Hu, Kai Zhao, Xiangfei Qiu, Yang Shu, Jilin Hu, Bin Yang, and Chenjuan Guo. Multirc:
+524
+        Joint learning for time series anomaly prediction and detection with multi-scale reconstructive
+525     contrast. arXiv preprint arXiv:2410.15997, 2024.
+526
+527   Yu Huang, Sebastian Bathiany, Peter Ashwin, and Niklas Boers. Deep learning for predicting rate-
+528     induced tipping. Nature Machine Intelligence, 6(12):1556–1565, 2024.
+529
+      Alexis Huet, José Manuel Navarro, and Dario Rossi. Local evaluation of time series anomaly detec-
+530     tion algorithms. In KDD, pp. 635–645, 2022.
+531
+532   Kyle Hundman, Valentino Constantinou, Christopher Laporte, Ian Colwell, and Tom Soderstrom.
+533     Detecting spacecraft anomalies using lstms and nonparametric dynamic thresholding. In KDD,
+534     2018.
+535   Hyeongwon Kang, Jinwoo Park, Seunghun Han, and Pilsung Kang. Forecasting anomaly precursors
+536     via uncertainty-aware time-series ensembles. arXiv preprint arXiv:2602.17028, 2026.
+537
+538   Siwon Kim, Kukjin Choi, Hyun-Soo Choi, Byunghan Lee, and Sungroh Yoon. Towards a rigorous
+539     evaluation of time-series anomaly detection. In AAAI, 2022.
+
+
+
+                                                        10
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+540
+      Cheryl Lee, Tianyi Yang, Zhuangbin Chen, Yuxin Su, and Michael R. Lyu. Maat: Performance
+541     metric anomaly anticipation for cloud services with conditional diffusion. In ASE, 2023.
+542
+543   Fei Tony Liu, Kai Ming Ting, and Zhi-Hua Zhou. Isolation forest. In ICDM, 2008.
+544
+      Qinghua Liu and John Paparrizos. The elephant in the room: Towards a reliable time-series anomaly
+545
+        detection benchmark. In NeurIPS Datasets and Benchmarks Track, 2024.
+546
+547   John Paparrizos, Paul Boniol, Themis Palpanas, Ruey S. Tsay, Aaron J. Elmore, and Michael J.
+548     Franklin. Volume under the surface: A new accuracy evaluation measure for time-series anomaly
+549     detection. Proceedings of the VLDB Endowment, 15(11):2774–2787, 2022a.
+550
+      John Paparrizos, Yuhao Kang, Paul Boniol, Ruey S. Tsay, Themis Palpanas, and Michael J. Franklin.
+551     Tsb-uad: An end-to-end benchmark suite for univariate time-series anomaly detection. Proceed-
+552     ings of the VLDB Endowment, 15(8):1697–1711, 2022b.
+553
+554   Daehyung Park, Yuuna Hoshi, and Charles C. Kemp. A multimodal anomaly detector for robot-
+555     assisted feeding using an lstm-based variational autoencoder. IEEE Robotics and Automation
+556
+        Letters, 3(3):1544–1551, 2018.
+557   Min-Yeong Park, Won-Jeong Lee, Seong Tae Kim, and Gyeong-Moon Park. When will it fail?:
+558    Anomaly to prompt for forecasting future anomalies in time series. In ICML, 2025.
+559
+560   Rebecca Salles, Janio Lima, Michel Reis, Rafaelli Coutinho, Esther Pacitti, Florent Masseglia, Reza
+561
+        Akbarinia, Chao Chen, Jonathan Garibaldi, Fabio Porto, and Eduardo Ogasawara. SoftED: Met-
+        rics for soft evaluation of time series event detection. Computers & Industrial Engineering, 198:
+562
+        110728, 2024. doi: 10.1016/j.cie.2024.110728.
+563
+564   M. Saquib Sarfraz, Mei-Yen Chen, Lukas Layer, Kunyu Peng, and Marios Koulakis. Position: Quo
+565    vadis, unsupervised time series anomaly detection? In ICML, pp. 43461–43476, 2024.
+566
+      Marten Scheffer, Jordi Bascompte, William A. Brock, Victor Brovkin, Stephen R. Carpenter, Vasilis
+567
+       Dakos, Hermann Held, Egbert H. van Nes, Max Rietkerk, and George Sugihara. Early-warning
+568
+       signals for critical transitions. Nature, 461:53–59, 2009.
+569
+570   Junho Song, Keonwoo Kim, Jeonglyul Oh, and Sungzoon Cho. Memto: Memory-guided trans-
+571     former for multivariate time series anomaly detection. In NeurIPS, 2023.
+572
+      Sondre Sørbø and Massimiliano Ruocco. Navigating the metric maze: A taxonomy of evaluation
+573
+        metrics for anomaly detection in time series. Data Mining and Knowledge Discovery, 38(3):
+574     1027–1068, 2024.
+575
+576   Ya Su, Youjian Zhao, Chenhao Niu, Rong Liu, Wei Sun, and Dan Pei. Robust anomaly detection
+577     for multivariate time series through stochastic recurrent neural network. In KDD, 2019.
+578
+      Shreshth Tuli, Giuliano Casale, and Nicholas R. Jennings. Tranad: Deep transformer networks for
+579     anomaly detection in multivariate time series data. Proceedings of the VLDB Endowment, 15(6):
+580     1201–1214, 2022.
+581
+582   Ricardo Emanuel Vaz Vargas, Celso José Munaro, Patrick Marques Ciarelli, André Gonçalves
+583     Medeiros, Bruno Guberfain do Amaral, Daniel Centurion Barrionuevo, Jean Carlos Dias
+584
+        de Araújo, Jorge Lins Ribeiro, and Lucas Pierezan Magalhães. A realistic and public dataset
+        with rare undesirable real events in oil wells. Journal of Petroleum Science and Engineering, 181,
+585
+        2019.
+586
+587   Dennis Wagner, Tobias Michels, Florian C. F. Schulz, Arjun Nair, Maja Rudolph, and Marius Kloft.
+588     Timesead: Benchmarking deep multivariate time-series anomaly detection. Transactions on Ma-
+589     chine Learning Research, 2023.
+590
+      Chengsen Wang, Zirui Zhuang, Qi Qi, Jingyu Wang, Xingyu Wang, Haifeng Sun, and Jianxin Liao.
+591
+        Drift doesn’t matter: Dynamic decomposition with diffusion reconstruction for unstable multi-
+592     variate time series anomaly detection. In NeurIPS, 2023.
+593
+
+
+
+                                                      11
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+594
+      Rui Wang, Xudong Mou, Renyu Yang, Kai Gao, Pin Liu, Chongwei Liu, Tianyu Wo, and Xudong
+595     Liu. Cutaddpaste: Time series anomaly detection by exploiting abnormal knowledge. In KDD,
+596     pp. 3176–3187, 2024.
+597
+598   Renjie Wu and Eamonn J. Keogh. Current time series anomaly detection benchmarks are flawed
+599     and are creating the illusion of progress. IEEE TKDE, 35(3):2421–2429, 2023.
+600   Xingjian Wu, Xiangfei Qiu, Zhengyu Li, Yihang Wang, Jilin Hu, Chenjuan Guo, Hui Xiong, and Bin
+601     Yang. Catch: Channel-aware multivariate time series anomaly detection via frequency patching.
+602     In ICLR, 2025.
+603
+604   Jiehui Xu, Haixu Wu, Jianmin Wang, and Mingsheng Long. Anomaly transformer: Time series
+605
+         anomaly detection with association discrepancy. In ICLR, 2022.
+606   Jiang You, Arben Çela, René Natowicz, Jacob Ouanounou, and Patrick Siarry. Anomaly prediction:
+607      A novel approach with explicit delay and horizon. In 2024 IEEE 20th International Conference
+608      on Intelligent Computer Communication and Processing (ICCP), pp. 1–8, 2024. doi: 10.1109/
+609      ICCP63557.2024.10793012.
+610
+      Zahra Zamanzadeh Darban, Geoffrey I. Webb, Shirui Pan, Charu C. Aggarwal, and Mahsa Salehi.
+611
+        Deep learning for time series anomaly detection: A survey. ACM Computing Surveys, 57(1):
+612
+        15:1–15:42, 2024. doi: 10.1145/3691338.
+613
+614   Sinong Zhao, Wenrui Wang, Hongzuo Xu, Zhaoyang Yu, Qingsong Wen, Gang Wang, Xiaoguang
+615     Liu, and Guansong Pang. Abnormality forecasting: Time series anomaly prediction via future
+616     context modeling. arXiv preprint arXiv:2410.12206, 2024.
+617
+      Bo Zong, Qi Song, Martin Renqiang Min, Wei Cheng, Cristian Lumezanu, Daeki Cho, and Haifeng
+618     Chen. Deep autoencoding gaussian mixture model for unsupervised anomaly detection. In ICLR,
+619     2018.
+620
+621
+622
+623
+624
+625
+626
+627
+628
+629
+630
+631
+632
+633
+634
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+
+
+
+                                                    12
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+648
+      A PPENDIX
+649
+650
+      A     D ETAILED M ETHODOLOGY
+651
+652   A.1    FAILURE M ODES AND D ESIGN R EQUIREMENTS
+653
+654   A common shifted-label protocol extends each anomaly interval into the preceding W steps:
+655
+                                               [︄                     ]︄
+                                                    ⋃︂
+                                     ext
+656                               y˜︁W (t) = 1 t ∈     (Pe (W ) ∪ Ae ) .                                         (4)
+657                                                         e
+658   This target depends on temporal position relative to te , not on whether Pe contains detectable ev-
+659   idence. For any positive segment Be , point adjustment (PA) replaces every prediction within that
+660   segment by the same segment-level hit:
+                                               {︄
+661                                               max ai (v; τi ), t ∈ Be ,
+                                    PA,B
+662                                ai    (t) = v∈Be                                                   (5)
+663                                              ai (t; τi ),        t∈
+                                                                      / Be .
+664
+      Let De ∈ {0, 1} denote the verdict of the precursor detectability test for event e. A test-supported
+665
+      warning requires a positive verdict and an alarm within the designated pre-onset interval:
+666
+667                                  Ge = De 1 [∃ t ∈ Pe (W ) : ai (t; τi ) = 1] .                               (6)
+668   An early alarm in a test-negative interval is unsupported by this test, whereas a test-positive interval
+669   followed only by a post-onset alarm represents a missed warning followed by reactive detection.
+670
+671   Shifted labels. Equation 4 makes the target recoverable from event-relative position. A diagnostic
+                                     ext
+672   oracle can set yˆ︁pos (t) = y˜︁W   (t) and classify perfectly without reading xt . Although not deployable,
+673   this oracle shows that high shifted-label performance need not imply input-dependent precursor
+674
+      evidence.
+675
+676
+      Point adjustment. For an input-blind alarm firing independently with probability p per point, the
+677
+      probability of a PA hit on Be is 1 − (1 − p)|Be | , which increases with segment length. If PA is
+      applied to the extended segment Pe ∪ Ae , a post-onset hit can propagate to its pre-onset portion.
+678
+679
+      A.2    RQ1: P LACEBO -C ALIBRATED P RECURSOR D ETECTABILITY T EST
+680
+681   At each lead, RQ1 compares the event pair with an identically constructed multiscale pair Ci,m (ℓ) at
+682   pseudo-onset m in Ninull . Under the null, the event and placebo pairs follow the same distribution.
+683
+      The test uses six descriptors of a window, namely mean level, log dispersion, slope between the
+684
+      first and last quarter, log jump energy, lag-1 autocorrelation, and cross-channel correlation. The
+685
+      first five are computed per channel on the standardized series and reduced to a root-mean-square
+686   over channels. Cross-channel correlation is the root-mean-square of the off-diagonal correlations
+687   among the 16 channels with the largest first-difference variability. Stacking the six descriptors at
+688   the two scales gives ϕ(I) ∈ Rd with d = 12 for every dataset. The change ∆j (Qe , Re ) is the root-
+689   mean-square of the change in descriptor j from Re to Qe , computed per channel or, for correlation,
+690                                       (0)
+      per channel pair, and mj and σ    ˆ︁j are the median of ∆j and its 95th percentile minus the median
+691
+      over reference–candidate pairs in Nifit . The entity-specific normal mean µi and covariance Σ         ˆ︁ i are
+692                        fit
+      estimated from Ni . For numerical stability, the covariance is regularized as Σ          ˜︁ i = (1 − λ)Σˆ︁ i +
+693
+694
+      λ diag(Σi ) + ρI, where λ and ρ are fixed before benchmark evaluation. Suppressing lead and scale
+               ˆ︁
+      indices, the test statistics are
+695
+                                                      ∆j (Qe , Re ) − mj
+696                            Tchange,e = max              (︂        )︂ ,      ε = 10−8 ,
+                                            j=1,...,d            (0)
+697                                                    max σ   ˆ︁j , ε
+698                                                                                    ]︂1/2                      (7)
+                                                              ⊤ ˜︁ −1
+                                            [︂
+699                               Tdev,e = (ϕ(Qe ) − µi ) Σ            (ϕ(Qe ) − µ   )       ,
+                                                                   i               i
+700
+701                                  Te = max (Tchange,e , Tdev,e ) .
+
+
+
+                                                            13
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+702
+      The change branch captures local changes, whereas the deviation branch captures slower departures
+703   from the normal regime. Applying the same composite statistic to event and placebo pairs preserves
+704   branch scales and dependence in the empirical null.
+705
+706   Placebo calibration. The same statistic, evaluated at M0 pseudo-onsets in Ninull , gives placebo
+707           (0)            (0)
+      values Ti,1 , . . . , Ti,M0 . The event p-value and verdict are
+708                                                                [︂        ]︂
+                                                         ∑︁M0         (0)
+709                                                  1 + m=1     1 Ti,m ≥ Te
+710                                           pe,ℓ =                            ,                   (8)
+                                                              M +1
+                                                                 0
+711
+712
+                                    De (ℓ; α) = 1 [pe,ℓ ≤ α] .
+713   A precursor is declared detectable only when its statistic exceeds the variation produced by the same
+714   procedure on matched normal data. Evaluated detectors do not enter this verdict.
+715   For dataset d, RQ1 reports the rejection rate and its excess over the held-out placebo rate estimated
+716   from Niver :
+717                                    1     ∑︂                                       (0)
+                            rˆ︁d,ℓ =              De (ℓ; α),     ηˆ︁d,ℓ = rˆ︁d,ℓ − rˆ︁d .               (9)
+718                                  |Ed,ℓ |
+                                           e∈Ed,ℓ
+719
+                                                           (0)
+720   An entity-clustered bootstrap compares rˆ︁d,ℓ with rˆ︁d (Appendix B.2.2), with multiplicity controlled
+721   over the prespecified dataset–lead grid. A significant ηˆ︁d,ℓ > 0 indicates excess pre-onset rejection
+722   at lead ℓ under the stated bootstrap assumptions; the resulting profile describes how detectability
+723   changes with lead.
+724
+725
+      A.3   E VIDENCE -BASED E VENT S TRATIFICATION
+726   Let Depre = De (0; α) be the verdict for support ending at onset, and let Deon be the verdict for
+727   equal-length support beginning at te . Each evaluable event is assigned to
+728                                            ⎧        pre
+729                                            ⎨P, De = 1,
+730                              group(e) = I, Depre = 0 and Deon = 1,                             (10)
+                                                 O, Depre = 0 and Deon = 0.
+                                               ⎩
+731
+732   P denotes leading evidence, I an onset-only change, and O neither. RQ2 contrasts P with NoP =
+733                                                                                                 (0)
+      I ∪ O. In addition to raw P counts, placebo-adjusted counts are reported as max(0, |Pd | − rˆ︁d Nd ),
+734   where Nd is the number of evaluable events in dataset d.
+735
+736   A.4   RQ2: E VIDENCE -C ONDITIONED M ODEL E VALUATION
+737
+738   The precursor detectability test asks whether evidence exists; matched-window precursor discrim-
+739
+      ination (MPA) asks whether frozen detector scores discriminate it. Each event is paired with Mc
+      equal-length, same-entity controls Ce,m ⊂ Ni . Their mean scores are
+740
+741                                 1 ∑︂                          1    ∑︂
+                           sPe =            si (t),    sC
+                                                        e,m =                si (t).              (11)
+742                                |Pe |                       |Ce,m |
+                                        t∈Pe                             t∈Ce,m
+743
+      A precursor win receives one and a tie one half. For event set E,
+744
+                                                        ]︁ 1 [︁ P
+                                 we,m = 1 sP         C                  C
+                                            [︁                            ]︁
+745
+                                               e > se,m + 1 se = se,m ,
+746                                                          2
+                                                       Mc                                               (12)
+747                                           1   ∑︂   ∑︂
+748
+                                MPA =                      we,m .
+                                          |E|Mc       m=1
+                                                    e∈E
+749
+750   The primary RQ2 estimand is threshold-free, although a thresholded variant may replace mean
+751   scores with alarm fractions.
+752   If paired interval scores are exchangeable under the null, precursor and control wins are equiprobable
+753   and half credit splits ties. Hence E[MPA] = 0.5, including for a constant scorer. Statistical tests use
+754   events as the randomization unit, and confidence intervals use a two-stage bootstrap over events and
+755   matched controls.
+
+
+
+                                                          14
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+756
+      For each model m and dataset d, P and NoP = I ∪ O are evaluated separately. Their evidence-
+757   conditioned contrast is
+758                               ∆MPA,m,d = MPAP             NoP
+                                                  m,d − MPAm,d .                             (13)
+759
+760
+      MPAP > 0.5 indicates that P windows tend to score above matched normal windows, but does not
+      by itself establish precursor-specific discrimination. MPANoP and ∆MPA compare discrimination
+761
+      between P and NoP events, while test-positive normal pseudo-events help assess the effect of test
+762
+      selection. MPA measures discrimination rather than earliness: RQ1 estimates the evidence horizon,
+763   whereas RQ2 evaluates detector scores on the resulting strata.
+764
+765
+766
+      B     D IAGNOSTIC A NALYSES
+767
+      This appendix reports analyses that test whether the conclusions depend on specific design choices
+768   of the measurement framework. Each subsection states the purpose, the analysis, and the result.
+769   All analyses reuse the frozen event taxonomy and the frozen causal score traces, and no detector is
+770   retrained. Decision criteria were fixed before the corresponding results were computed. Analyses
+771   labelled post hoc were added after inspecting results and serve as sensitivity checks.
+772
+773   B.1     P ROTOCOL VALIDITY
+774
+      B.1.1     P OWER BY P RECURSOR M ORPHOLOGY
+775
+776   Table 5 reports the rejection rate of the precursor detectability test for all eight morphologies injected
+777   in Section 4.1. Each cell is estimated from 500 trials, and the rejection rate under the null is 0.060
+778   [0.042, 0.084].
+779
+780       Table 5: Rejection rate of the precursor detectability test by injected morphology and strength.
+781                            Morphology               0.25     0.50    0.75     1.00
+782                            Level                   0.328    0.990   1.000    1.000
+783                            Slow drift              0.150    0.732   0.996    1.000
+                               Variance                0.654    1.000   1.000    1.000
+784
+                               Spectral                0.054    0.518   1.000    1.000
+785                            Nonlinear dependence    0.068    0.078   0.272    0.788
+786                            Jump                    0.092    0.974   1.000    1.000
+787                            Autocorrelation         0.144    0.878   1.000    1.000
+788                            Linear dependence       0.144    0.290   0.620    0.954
+789
+790   B.1.2     R ECOVERY OF A NNOTATED 3W T RANSITIONS
+791
+792
+      The 3W positive control in Section 4.3 evaluates detector scores. This analysis applies the precursor
+      detectability test itself to the 3W transitions with the benchmark settings unchanged. For each of
+793
+      the 48 instances, the normal pool is the operation before the annotated transition, the event point is
+794
+      the start of the fault steady state, and candidate and reference windows at every lead lie inside the
+795   annotated transition. Channels with more than 1% non-finite values or zero variance during normal
+796   operation are removed, and one instance with fewer than two remaining channels is excluded. Well-
+797   clustered bootstrap inference follows Section B.2.2.
+798
+      The held-out placebo rate is 0.050 with a Wilson 95% interval of [0.047, 0.054] over 12,538 win-
+799
+      dows. The test detects evidence in 43 of 47 transitions at ℓ = 0 (p < 10−4 ), and the detection rate
+800
+      stays between 0.915 and 0.936 for every lead from 0 to 200 seconds. All detections come from the
+801   deviation branch. For comparison, the rates at ℓ = 0 are 0.159 for SMD, 0.156 for PSM, 0.273 for
+802   SWaT, 0.029 for MSL, and 0.030 for SMAP. As a negative control, windows ending at the annotated
+803   start of the transition were also tested. Of these, 11 of 47 are rejected (p = 0.002 against the placebo
+804   rate).
+805
+      A second design splits the leading normal operation of each record chronologically into fit, null, and
+806
+      verification thirds, so that the verification windows lie closest to the transition. On a deterministic
+807   subset of 16 records from nine wells, this design rejects 84.8% of transition windows (well-bootstrap
+808   interval [59.4, 98.4]%), 29.2% of verification windows ([16.2, 41.7]%), and 37.5% of windows end-
+809   ing at the transition start. Both designs therefore find elevated rejection in the normal operation that
+
+
+                                                         15
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+810
+      immediately precedes an annotated 3W transition, and the random split used for the benchmarks
+811   keeps the held-out rate at its nominal level.
+812
+813   B.1.3    S ENSITIVITY TO THE A NNOTATED O NSET
+814
+815   The test takes the benchmark onset te as given. If an annotated onset is later than the true onset, the
+816   candidate window contains part of the anomaly. We examine this in three steps.
+817
+818   Synthetic onset shift Using the generator of Section 4.1, each synthetic series contains an
+819   anomaly, a level shift of +3 on four of eight channels starting at a true onset T , either alone or
+820
+      preceded by one of the eight injected precursor morphologies at strength 0.5 or 1.0. The test is ap-
+      plied at an annotated onset T + δ with 500 trials per cell. Table 6 reports the rate at which the test
+821
+      declares a precursor.
+822
+823   Table 6: Precursor verdict rate under annotated-onset shifts δ (positive means annotated later than
+824   the true onset).
+825              Condition                   −20     −10             −5        0     +5       +10     +20
+826              Anomaly only               0.060   0.072          0.056   0.058   0.930     1.000   1.000
+827              Precursor and anomaly      0.662   0.756          0.798   0.836   0.991     1.000   1.000
+828
+829   An onset annotated five steps late turns 93% of precursor-free events into apparent precursors,
+830   whereas an early annotation leaves the rate at the placebo level.
+831
+832   Known transition boundaries A second simulation uses six-channel AR(1) series with a true
+833
+      onset at step 300, an optional 80-step precursor (level, ramp, or variance) before it, and a common
+      post-onset fault, with 300 trials per condition. Figure 6(a) shows that the precursor-free rejection
+834
+      rate is 15 of 300 at the true boundary and 300 of 300 once the annotation is 25 steps late. Figure 6(b)
+835
+      shows that all three precursors are detected at lead zero, while the ramp is detected in 68.3% of trials
+836   at lead 50 and 3.7% at lead 75, so the detectable horizon of a given statistic can be shorter than the
+837   true transition. Table 7 follows the same trials through the full framework at the true onset. A causal
+838   25-step energy score separates every precursor condition from its controls and issues a new alarm
+839   before onset in every precursor trial, whereas precursor-free trials stay at chance.
+840
+841   Table 7: End-to-end outcome at the true onset in the known-boundary simulation, 300 trials per
+842
+      condition. Early recall requires a newly issued alarm episode before onset, and lead is the median
+      first-alarm lead in steps.
+843
+844                          Condition        Test positive        MPA     Early recall    Lead
+845                          No precursor                15        0.479         0.103       57
+                             Level                     300         1.000         1.000       75
+846
+                             Ramp                      300         1.000         1.000       51
+847                          Variance                  300         1.000         1.000       76
+848
+849
+      Continuity at the onset A late annotation places te inside an ongoing change, so the signal shows
+850
+      no additional jump at te and the largest change point lies earlier. For every event we computed the
+851
+      five-versus-five-step jump J(s) = ∥z̄[s,s+5) − z̄[s−5,s) ∥2 on the standardized channels and compared
+852
+      J(te ) with the 95th percentile of J over fully normal neighbourhoods. An event is classified as
+853   onset jump if J(te ) exceeds this percentile, as boundary shift if it does not while the largest jump
+854   in [te − 45, te + 5] lies at least three steps before te , exceeds the percentile, and points in the same
+855   direction as the post-onset deviation, and as undetermined otherwise. On the synthetic series, the
+856   check classifies 94.5% of the apparent precursors created by late annotations as boundary shift and
+857   84.5% of correctly annotated precursors as onset jump, and it assigns 9.8% of correctly annotated
+858   precursors to boundary shift. Table 8 applies the check to SMD.
+859
+                           Table 8: Continuity at the annotated onset for SMD events.
+860
+861                       Group     Onset jump      Boundary shift         Undetermined     Events
+862                       P         38 (74.5%)          6 (11.8%)             7 (13.7%)        51
+                          I        109 (69.9%)          10 (6.4%)            37 (23.7%)       156
+863
+
+
+
+                                                              16
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+864
+865
+866
+867
+868
+869
+870
+871
+872
+873
+874
+875
+876
+877   Figure 6: Known-boundary simulation, 300 trials per condition. (a) Rejection rate of precursor-free
+878   trials as the annotated onset moves relative to the true onset, with 95% Wilson intervals; shading
+879   marks late annotations that admit post-onset observations. (b) Rejection rate at the true onset across
+880   endpoint leads; the vertical line marks the 80-step precursor boundary.
+881
+882   The share of SMD P events classified as boundary shift, 11.8%, is close to the 9.8% that the check
+883   assigns to correctly annotated synthetic precursors.
+884
+885
+      Near-onset leads The candidate window at lead ℓ equals the lead-0 window under an onset moved
+      ℓ steps earlier. Adding ℓ = 5 to the prespecified grid reproduces every verdict of the original leads
+886
+      exactly. Table 9 reports the uncorrected primary bootstrap p-values.
+887
+888      Table 9: Event rejection rates near the annotated onset, with uncorrected bootstrap p-values.
+889                 Dataset   Placebo rate       ℓ=0              ℓ=5               ℓ = 10
+890                 SMD          0.047       51/320 (0.001)   30/319 (0.015)    24/318 (0.072)
+891                 PSM          0.034        7/45 (0.051)     6/45 (0.089)      8/45 (0.031)
+892                 SWaT         0.037        9/33 (0.005)    11/33 (0.001)    12/33 (< 0.001)
+893
+894   B.1.4    I DENTICAL H ISTORIES WITH D IFFERENT F UTURES
+895
+896   Each synthetic history ending at the candidate endpoint is paired with a benign and a faulty continu-
+897   ation, 1,000 pairs per history type. The test reads only observations before the endpoint, so all 4,000
+898
+      paired p-values are identical. The rejection rate is 0.055 for precursor-free histories, 0.982 for slow
+      drift, and 1.000 for level and variance precursors, whichever future follows. In these paired trials,
+899
+      identical histories receive identical verdicts whichever future follows.
+900
+901   B.2     B ENCHMARK WARNABILITY
+902
+903   B.2.1    C ORRECTED E NTITY B OUNDARIES
+904
+      SMD, MSL, and SMAP are distributed as concatenated arrays without entity boundaries. A verifi-
+905
+      cation against the official per-entity label files, matching both segment length and anomaly count,
+906
+      showed that the boundary table used in an earlier version assigned some SMD and SMAP segments
+907   to the wrong entity, while MSL was unaffected. All three research questions were rerun with the
+908   corrected table and every other setting unchanged, and all reported results use the corrected table.
+909   Table 10 lists every quantity that changed.
+910
+      The one-event difference in the annotated total arises because a boundary in the original table split
+911
+      one SMD event into two adjacent pieces. Under the corrected table the SMD label array contains
+912
+      327 contiguous events whether it is counted as a whole or entity by entity.
+913
+914   B.2.2    D EPENDENCE -AWARE DATASET-L EVEL I NFERENCE
+915
+916   Events of the same entity share one fitted calibration, control windows at stride 5 overlap, and the
+917   placebo rate is estimated from a finite verification pool. A binomial test that treats events as inde-
+      pendent and the placebo rate as known therefore overstates significance. The primary test resamples
+
+
+                                                        17
+      Under review as a conference paper at ICLR 2027
+
+
+
+
+918
+                     Table 10: Quantities that change under the corrected entity boundaries.
+919
+                     Quantity                                          Original table       Corrected table
+920
+                     Annotated events (five benchmarks)                          538                   537
+921
+                     Evaluable events                                            496                   500
+922                  P events (all benchmarks)                                    69                     70
+923                  SMD P events / evaluable                               49 / 316              51 / 320
+924                  SMAP P events                                                  3                     2
+925                  SMD common P events in RQ2                                   45                     49
+                     Mean Detection F1, without / with PA              0.186 / 0.549         0.179 / 0.551
+926
+                     Mean Shifted-warning F1, without / with PA        0.037 / 0.173         0.036 / 0.177
+927                  Significant benchmark MPA cells after BH                0 of 35                0 of 35
+928                  3W MPA cells with q < 0.05                                7 of 7                7 of 7
+929
+930   whole entities with replacement for SMD, MSL, and SMAP and resamples events for the single-
+931   entity PSM and SWaT, draws the placebo rate from a binomial distribution over the effective pool
+932   size nver × 5/100, an effective-sample-size approximation based on stride 5 and the 100-step sup-
+933   port, and computes a centred bootstrap p-value from 20,000 draws. Table 11 compares this test with
+934   alternatives. BH correction over the 50 dataset–lead cells is applied within every row.
+935
+      Table 11: Dataset–lead cells with BH q < 0.05 under alternative dataset-level tests. MSL and SMAP
+936   have no significant cell under any test.
+937
+               Test                                      SMD                PSM                     SWaT
+938
+               Binomial, placebo rate known              ℓ=0             ℓ = 0–50             ℓ = 0, 10, 40, 100
+939            Fisher exact, nominal pool (post hoc)     ℓ=0        ℓ = 0, 10, 20, 30, 50         ℓ = 0, 10
+940            Bootstrap, nominal pool                   ℓ=0                none                  ℓ = 0, 10
+941            Bootstrap, effective pool (primary)       ℓ=0                none                   ℓ = 10
+942            Fisher exact, effective pool (post hoc)   ℓ=0                none                    none
+943
+      SMD at ℓ = 0 is significant under every test, and no SMD lead beyond onset is significant under
+944
+      any test. The PSM and SWaT profiles depend on the effective size of the placebo pool, so no lead
+945
+      beyond onset is interpreted as an established warning horizon.
+946
+947
+      B.2.3    P LACEBO R EJECTION R ATE BY D ISTANCE TO THE N EXT E VENT
+948
+949   Candidate windows end at an annotated onset, whereas placebo windows lie at least 50 steps be-
+950   fore the next event. Table 12 stratifies the held-out placebo windows by their distance to the next
+951   annotated onset.
+952   Table 12: Held-out placebo rejection rate by distance to the next annotated onset in samples, with
+953   Wilson 95% intervals. PSM and SWaT have fewer than 25 windows in each band below 200 and are
+954   omitted.
+955      Dataset          50–100                  100–200                   200–500                     ≥500
+956      SMD        0.053 [0.029, 0.095]     0.042 [0.026, 0.067]      0.068 [0.054, 0.086]      0.041 [0.036, 0.047]
+957      MSL        0.037 [0.014, 0.091]     0.062 [0.038, 0.100]      0.031 [0.020, 0.048]      0.046 [0.037, 0.057]
+958      SMAP       0.047 [0.023, 0.094]     0.076 [0.050, 0.115]      0.030 [0.020, 0.044]      0.041 [0.036, 0.047]
+959
+960   No dataset shows a rejection rate that increases as the next event approaches, and the band closest
+961
+      to an event lies within the interval of the most distant band in all three datasets.
+962
+      B.3     M ODEL P RECURSOR D ISCRIMINATION
+963
+964   B.3.1    S TATISTICAL P OWER
+965
+966   Of the 70 P events, 67 have common support across the seven detectors in RQ2 (SMD 51 to 49,
+967   PSM 7 to 6, and no loss for MSL, SMAP, and SWaT). Table 13 traces each dataset from labeled
+968
+      events to the common support used for MPA.
+969   Table 14 reports the smallest MPA that a one-sided event-level test at α = 0.05 detects with power
+970   0.8, using the event-level standard deviation implied by the two-stage bootstrap intervals and a
+971   normal approximation. The Bonferroni column corresponds to correction over the 35 benchmark
+      cells.
+
+
+                                                           18
+       Under review as a conference paper at ICLR 2027
+
+
+
+
+972
+       Table 13: Event flow from labeled events to the common support of the seven detectors. Eligible
+973    events have uncontaminated pre-onset support within their entity.
+974
+                          Dataset    Labeled     Eligible      P    Common P      Common NoP
+975
+                          SMD           327          320      51          49             249
+976                       MSL             36          35       1           1              33
+977                       SMAP            67          67       2           2              64
+978                       PSM             72          45       7           6              38
+979                       SWaT            35          33       9           9              24
+980                       Total         537          500      70          67             408
+981
+                        Table 14: Minimum detectable MPA on the common P support.
+982
+983                     Dataset     Common P events         MDE (α = 0.05)      MDE (Bonferroni)
+984                     SMD                     49              0.602               0.657
+                        SWaT                      9             0.729               0.853
+985
+                        PSM                       6             0.791               0.948
+986                     MSL                       1               –                   –
+987                     SMAP                      2               –                   –
+988
+989    The upper 95% bootstrap bound of mean-score MPAP on SMD is at most 0.656 across the seven
+990    detectors. Table 15 reports the evidence-conditioned contrast of Equation (13) for SMD.
+991
+992    Table 15: Evidence-conditioned contrast on SMD, ∆MPA = MPAP − MPANoP , with 95% boot-
+993    strap intervals and BH-adjusted q over 35 benchmark cells.
+994                      Model          MPAP       MPANoP                ∆MPA [95% CI]          q
+995                      iForest         0.553       0.506          0.047 [−0.042, 0.137]    0.61
+996                      DAGMM           0.544       0.513          0.031 [−0.050, 0.115]    0.61
+997                      USAD            0.471       0.524         −0.053 [−0.157, 0.051]    1.00
+                         LSTM-VAE        0.534       0.490          0.044 [−0.047, 0.135]    0.61
+998
+                         AnomTrans       0.500       0.500            0.000 [0.000, 0.000]   1.00
+999                      FCM             0.431       0.449         −0.018 [−0.111, 0.073]    1.00
+1000                     A2P             0.573       0.469            0.105 [0.013, 0.194]   0.43
+1001
+1002   Table 16 reports the same contrast for the other four benchmarks. For MSL and SMAP, with one
+1003   and two P events, the intervals reflect variation across controls only.
+1004   For Anomaly Transformer on SMD and PSM, every event-level outcome equals 0.5, so these com-
+1005   parisons show no ranking advantage.
+1006
+1007   B.3.2   W INDOW A LIGNMENT
+1008
+1009
+       The test locates SMD evidence within the final minutes before onset, whereas the primary MPA
+       averages scores over the 100-step interval. Table 17 repeats the SMD analysis with the window
+1010
+       mean or maximum over the final L steps of the candidate and of each control. Each variant draws
+1011
+       its own 20 controls per event, and event-level sign-flip randomization with 10,000 draws is BH-
+1012   corrected over the 35 benchmark cells within each variant. No cell outside SMD is significant in any
+1013   variant.
+1014
+1015
+       Across the seven variants, the maximum-over-50 cells of LSTM-VAE and DAGMM and the
+       maximum-over-25 cell of LSTM-VAE remain below 0.05 after an additional Bonferroni factor of
+1016
+       six for the number of alternative variants.
+1017
+1018
+       Selection control The test selects windows that deviate from normal operation, and a detector
+1019
+       that scores such deviations can separate selected windows from controls without any relation to a
+1020   later event. We therefore apply the same computation to held-out normal placebo windows of SMD,
+1021   treating each window end as a pseudo-onset. Of these pseudo-events, 355 are test-positive and 1,000
+1022   randomly drawn test-negative ones serve as a reference. Criteria were fixed before the analysis. A
+1023   difference in MPA between the 49 P events and the 355 test-positive pseudo-events is considered
+1024   statistically significant when its bootstrap interval excludes zero.
+1025
+
+
+
+                                                             19
+       Under review as a conference paper at ICLR 2027
+
+
+
+
+1026
+       Table 16: Evidence-conditioned contrast on PSM, SWaT, SMAP, and MSL, with common P and
+1027   NoP counts in parentheses, 95% bootstrap intervals, and BH-adjusted q over 35 benchmark cells.
+1028
+                Dataset         Model          MPAP     MPANoP              ∆MPA [95% CI]          q
+1029
+                PSM (6/38)      iForest         0.675     0.507        0.168 [−0.131, 0.438]    0.61
+1030
+                                DAGMM           0.525     0.467        0.058 [−0.178, 0.270]    0.77
+1031                            USAD            0.417     0.476      −0.060 [−0.298, 0.203]     1.00
+1032                            LSTM-VAE        0.567     0.449        0.118 [−0.161, 0.365]    0.61
+1033                            AnomTrans       0.500     0.500          0.000 [0.000, 0.000]   1.00
+1034                            FCM             0.550     0.451        0.099 [−0.187, 0.358]    0.61
+                                A2P             0.175     0.489     −0.314 [−0.486, −0.122]     1.00
+1035
+                SWaT (9/24)     iForest         0.467     0.504      −0.037 [−0.283, 0.209]     1.00
+1036
+                                DAGMM           0.467     0.452        0.015 [−0.231, 0.259]    0.91
+1037                            USAD            0.378     0.444      −0.066 [−0.290, 0.178]     1.00
+1038                            LSTM-VAE        0.367     0.460      −0.094 [−0.322, 0.147]     1.00
+1039                            AnomTrans       0.389     0.447      −0.058 [−0.230, 0.126]     1.00
+1040                            FCM             0.328     0.438      −0.110 [−0.323, 0.134]     1.00
+                                A2P             0.350     0.406      −0.056 [−0.263, 0.177]     1.00
+1041
+                SMAP (2/64)     iForest         0.775     0.550          0.225 [0.143, 0.305]   0.61
+1042
+                                DAGMM           0.825     0.529          0.296 [0.173, 0.418]   0.61
+1043                            USAD            0.875     0.534          0.341 [0.261, 0.421]   0.44
+1044                            LSTM-VAE        0.725     0.527          0.198 [0.023, 0.375]   0.61
+1045                            AnomTrans       0.362     0.534     −0.172 [−0.222, −0.124]     1.00
+1046                            FCM             0.900     0.516          0.384 [0.278, 0.490]   0.52
+                                A2P             0.850     0.483          0.367 [0.174, 0.561]   0.43
+1047
+                MSL (1/33)      iForest         0.000     0.555     −0.555 [−0.650, −0.456]     1.00
+1048
+                                DAGMM           1.000     0.517          0.483 [0.383, 0.585]   0.43
+1049                            USAD            0.000     0.514     −0.514 [−0.621, −0.409]     1.00
+1050                            LSTM-VAE        0.800     0.626          0.174 [0.068, 0.283]   0.91
+1051                            AnomTrans       0.100     0.595     −0.495 [−0.614, −0.376]     1.00
+1052                            FCM             0.800     0.470          0.330 [0.227, 0.433]   0.61
+                                A2P             0.000     0.350     −0.350 [−0.453, −0.252]     1.00
+1053
+1054
+       Table 17: SMD MPAP under aligned windows. Bold marks BH-adjusted q < 0.05. The 100-step
+1055
+       mean variant uses an independent control draw and differs from Table 3 by at most 0.03.
+1056
+                                  Window mean, final L steps      Window maximum, final L steps
+1057
+                  Model           100    50       25        10       50    25                 10
+1058
+                  iForest       0.553 0.564 0.584 0.607           0.596 0.594              0.591
+1059
+                  DAGMM         0.552 0.578 0.588 0.596           0.662 0.635              0.612
+1060              USAD          0.467 0.479 0.471 0.461           0.496 0.506              0.491
+1061              LSTM-VAE      0.530 0.545 0.561 0.559           0.743 0.713              0.682
+1062              AnomTrans     0.500 0.500 0.500 0.500           0.500 0.500              0.500
+1063              FCM           0.451 0.441 0.448 0.461           0.438 0.478              0.454
+                  A2P           0.602 0.592 0.563 0.567           0.566 0.591              0.567
+1064
+1065
+       Selection alone raises MPA well above 0.5. The test-positive pseudo-events reach 0.551–0.653 for
+1066
+       iForest, DAGMM, and LSTM-VAE in every window-maximum variant (p ≤ 0.002). LSTM-VAE
+1067
+       exceeds this selection level in all three windows, whereas the DAGMM separation is matched by the
+1068   selected normal windows.
+1069
+1070   B.3.3   P ER -M ACHINE T RAINING ON SMD
+1071
+1072   The seven detectors of the main comparison were trained on pooled entities. A separate experiment
+1073   fits an iForest to each of the 28 SMD machines on that machine’s training data alone, and adds a
+1074   normal-energy score and an input-independent random score as references. Each machine’s training
+1075
+       segment is split chronologically into fit, calibration, and verification parts in the ratio 60/20/20,
+       thresholds are the 95th or 99th percentile of calibration scores, and the precursor detectability test
+1076
+       uses the fit part as its normal reference. Under this train-only reference the test flags 92 of the 320
+1077
+       eligible SMD events, compared with 51 under the reference of the main text, and 30 of 362 normal
+1078   pseudo-events.
+1079
+
+
+
+                                                         20
+       Under review as a conference paper at ICLR 2027
+
+
+
+
+1080
+       Table 18: Window-maximum MPA on SMD for P events and for test-positive normal pseudo-events,
+1081   with the difference and its 95% bootstrap interval. Test-negative pseudo-events lie between 0.49 and
+1082   0.51 for both detectors.
+1083           Model       Window          P events    Test-positive pseudo-events      Difference [95% CI]
+1084           LSTM-VAE    max, final 50      0.743                          0.630      0.113 [0.031, 0.192]
+1085           LSTM-VAE    max, final 25      0.713                          0.608      0.105 [0.018, 0.188]
+1086           LSTM-VAE    max, final 10      0.682                          0.576      0.106 [0.011, 0.196]
+1087           DAGMM       max, final 50      0.662                          0.653    0.009 [−0.082, 0.098]
+               DAGMM       max, final 25      0.635                          0.619    0.016 [−0.078, 0.104]
+1088
+               DAGMM       max, final 10      0.612                          0.573    0.039 [−0.064, 0.138]
+1089
+1090     Table 19: Mean-score MPA with per-machine training on SMD, with 95% bootstrap intervals.
+1091     Scorer       P events (92)         NoP events (228)       Positive pseudo (30)     Negative pseudo (332)
+1092     iForest   0.861 [0.760, 0.935]    0.577 [0.478, 0.696]    0.655 [0.550, 0.763]      0.489 [0.451, 0.526]
+1093     Energy    0.874 [0.762, 0.960]    0.568 [0.460, 0.698]    0.647 [0.600, 0.825]      0.508 [0.462, 0.558]
+1094     Random    0.495 [0.409, 0.619]    0.506 [0.468, 0.541]    0.552 [0.435, 0.650]      0.513 [0.471, 0.554]
+1095
+1096   With per-machine training, iForest and energy scores separate P events well above the level reached
+1097   by test-positive normal pseudo-events, and the random score stays near 0.5 in every group.
+1098
+1099   B.4     P ROTOCOL C OMPARISON
+1100
+       B.4.1    P OINT A DJUSTMENT ON THE M ERGED TARGET
+1101
+1102   This analysis applies PA to the merged target Pe ∪ Ae of Equation (4) for the seven pooled-trained
+1103   detectors at the 95th-percentile threshold. For every event hit under merged-target PA, it records
+1104   whether the pre-onset segment Pe contains an alarm. Pooled over the seven detectors, the pre-onset
+1105   segment contains no alarm for 314 of 699 hits on SMD (0.449), 22 of 48 on PSM (0.458), 28 of 65
+1106   on SWaT (0.431), 87 of 281 on SMAP (0.310), and 37 of 181 on MSL (0.204). These events receive
+1107
+       warning credit solely from post-onset alarms. Mean F1 on the merged target is 0.175 without PA
+       and 0.570 with PA.
+1108
+1109
+       B.4.2    I NPUT-B LIND A LARMS AND O PERATING P OINTS
+1110
+1111   Two input-blind alarm sequences are evaluated for every detector and entity. Bernoulli alarms fire
+1112   independently at the detector’s own alarm rate, and circular shifts move the detector’s own alarm
+1113   sequence by a random offset, which preserves the number and length of alarm runs while removing
+1114   their timing relative to events. Each is drawn 20 times.
+1115
+        Table 20: Mean F1 over the five benchmarks and seven detectors at the 95th-percentile threshold.
+1116
+1117                           Protocol          Detectors     Bernoulli   Circular shift
+1118                           Detection+PA         0.551         0.740           0.476
+                               Shifted+PA           0.177         0.431           0.167
+1119
+                               Merged+PA            0.570         0.788           0.497
+1120
+1121   Across thresholds at the 90th, 95th, 99th, and 99.9th normal-score percentiles and pre-onset lengths
+1122   W ∈ {25, 50, 100, 200}, Shifted-warning F1 without PA differs from Bernoulli alarms by at most
+1123   0.002, and Bernoulli alarms exceed the detectors under Shifted+PA and Merged+PA in all sixteen
+1124   settings.
+1125
+1126   B.4.3    P ER -M ACHINE T RACES UNDER THE T HREE TARGETS
+1127
+       Table 21 applies the three targets to the per-machine SMD traces of Appendix B.3.3. Late-only
+1128
+       counts give the credited events whose pre-onset segment contains no alarm. At the 95th percentile,
+1129
+       the per-machine random score hits 316 of the 320 pre-onset windows, in line with the hit probability
+1130   of about 0.99 for independent alarms at this rate.
+1131
+1132
+1133
+
+
+
+                                                          21
+       Under review as a conference paper at ICLR 2027
+
+
+
+
+1134
+       Table 21: F1 under Detection, Shifted, and Merged targets with and without PA for per-machine
+1135   SMD traces.
+1136               Scorer        q     Detection            Shifted           Merged       Late-only
+1137                                  Raw       PA        Raw       PA      Raw      PA    / credited
+1138               iForest    0.95   0.154 0.285         0.083 0.229       0.203 0.464        72/302
+1139               iForest    0.99   0.203 0.462         0.068 0.294       0.207 0.600        65/236
+1140               Energy     0.95   0.164 0.279         0.083 0.225       0.213 0.456        68/310
+1141
+                   Energy     0.99   0.192 0.435         0.074 0.266       0.208 0.618       125/293
+                   Random     0.95   0.046 0.620         0.048 0.652       0.064 0.792         2/318
+1142               Random     0.99   0.016 0.822         0.016 0.692       0.018 0.876        41/246
+1143
+1144
+       B.4.4   D ECISION -O RIENTED O UTCOMES
+1145
+1146   Table 22 reports the operation of the per-machine SMD traces over the test period. Early recall
+1147   counts an event only when a new alarm episode starts within the 100 minutes before onset. Episode
+1148   precision is the share of alarm episodes that start in an eligible pre-onset window. The calibration
+1149   budget chooses the threshold that allows at most one episode per 1,000 calibration samples and 1%
+1150
+       time under alarm.
+1151   Table 22: Test-period operation on SMD with per-machine training, 320 eligible events and 631,031
+1152   normal samples. Episodes are normal-data alarm episodes per 1,000 samples, alarm time is the share
+1153   of normal samples under alarm, and lead is the median first-warning lead in minutes.
+1154              Scorer     Threshold    Early recall    Precision      Episodes   Alarm time   Lead
+1155              iForest    q = .95           62.8%         4.51%           44.0       20.3%      88
+1156              iForest    q = .99           50.3%         5.38%           21.9       8.72%      73
+1157              iForest    budget            26.3%         4.82%           10.0       3.48%      65
+1158
+                  Random     q = .95           98.8%         4.58%           46.7       4.92%      88
+                  Random     q = .99           64.1%         4.48%            9.8       0.99%      61
+1159
+1160
+       Early recall alone rewards frequent alarms, as the random score reaches 98.8% at the 95th percentile.
+1161   The calibration budget holds on every machine’s calibration split, yet the test-period burden of iFor-
+1162   est is 10.0 episodes per 1,000 samples, which reflects drift between calibration and test periods. Run
+1163   online at one test per five samples, the precursor detectability test itself would raise 10 to 14 false
+1164   alarms per day on the minute-level benchmarks and 647 on SWaT, which is sampled every second.
+1165
+1166
+1167
+1168
+1169
+1170
+1171
+1172
+1173
+1174
+1175
+1176
+1177
+1178
+1179
+1180
+1181
+1182
+1183
+1184
+1185
+1186
+1187
+
+
+
+                                                           22
+
