@@ -1,0 +1,9 @@
+# 备份与缓存
+.bak/
+*.bak*
+__pycache__/
+.DS_Store
+_archive/
+# 网页工作台：index.html 由 sync.py 生成；edits/ 是各自浏览器里的本地改动
+06_网站/index.html
+06_网站/edits/
