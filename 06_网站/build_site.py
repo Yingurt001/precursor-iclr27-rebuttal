@@ -132,6 +132,37 @@ def reconcile_store(threads):
           f"（旧快照存到 edits/.stale/）")
 
 
+def attach_questions(threads):
+    """questions.json 只存定位片段；原文从 REVIEWS.md 逐字取出，挂到每条线程的 questions 上。"""
+    qpath = HERE / "questions.json"
+    if not qpath.exists():
+        return
+    mapping = json.loads(qpath.read_text(encoding="utf-8"))
+    text = REVIEWS.read_text(encoding="utf-8")
+    blocks = dict(zip(*[iter(re.split(r"^## R\d · Reviewer (\w+).*$", text, flags=re.M)[1:])] * 2))
+    split = r"\n\s*\n|\n(?=- )|\n(?=Q\d)|\n(?=\d\. )|\n(?=\t\d\. )"
+    for t in threads:
+        sections = mapping.get(t["id"])
+        if not sections:
+            continue
+        paras = [x.strip() for x in re.split(split, blocks.get(t["id"], "")) if x.strip()]
+        out, missing = {}, []
+        for sec, items in sections.items():
+            for it in items:
+                hit = [x for x in paras if x.startswith(it["start"])]
+                if len(hit) != 1:
+                    missing.append(f"§{sec} {it['label']}")
+                    continue
+                q = hit[0]
+                if it.get("sentence"):
+                    q = " ".join(x for x in re.split(r"(?<=[.?!])\s+", q) if it["sentence"] in x)
+                q = re.sub(r"^(- |\d+\. |Q\d+[a-c]?( \[[^\]]+\])?:\s*)", "", q)
+                out.setdefault(sec, []).append({"label": it["label"], "text": q, "zh": it.get("zh", "")})
+        t["questions"] = out
+        n = sum(len(v) for v in out.values())
+        print(f"  审稿人原话 {t['id']:5s} {n} 段" + (f"  ⚠️ 找不到：{', '.join(missing)}" if missing else ""))
+
+
 def main():
     notes = parse_reviews(REVIEWS)
     print(f"  解析审稿意见 {len(notes)} 份：{', '.join(notes)}")
@@ -166,6 +197,7 @@ def main():
     })
 
     reconcile_store(threads)
+    attach_questions(threads)
 
     data = json.dumps({"threads": threads}, ensure_ascii=False)
     html = (HERE / "template.html").read_text(encoding="utf-8")
