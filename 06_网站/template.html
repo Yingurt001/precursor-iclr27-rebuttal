@@ -24,6 +24,7 @@ __KATEX_CSS__
   --danger:     #A81E12;
   --danger-bg:  #FBEAE8;
   --done:       #0E6E5C;
+  --p0: #002FA7; --p1: #B4541A; --p2: #0E6E5C;   /* 批注作者：people.json 的顺序 */
 
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", ui-serif, Georgia, serif;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -52,6 +53,7 @@ __KATEX_CSS__
     --danger:     #F08076;
     --danger-bg:  #3A1A17;
     --done:       #4BC2A5;
+  --p0: #7A97FF; --p1: #E08A55; --p2: #4BC2A5;
   }
 }
 
@@ -73,6 +75,7 @@ __KATEX_CSS__
   --danger:     #F08076;
   --danger-bg:  #3A1A17;
   --done:       #4BC2A5;
+  --p0: #7A97FF; --p1: #E08A55; --p2: #4BC2A5;
 }
 
 :root[data-theme="light"] {
@@ -93,6 +96,7 @@ __KATEX_CSS__
   --danger:     #A81E12;
   --danger-bg:  #FBEAE8;
   --done:       #0E6E5C;
+  --p0: #002FA7; --p1: #B4541A; --p2: #0E6E5C;   /* 批注作者：people.json 的顺序 */
 }
 
 * { box-sizing: border-box; }
@@ -327,6 +331,52 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line-soft); }
 /* 线程级：一次切换本线程全部帖子 */
 .thread-bar { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); }
 .thread-bar .spacer { flex: 1; }
+/* ── 侧栏：批注按钮、审稿人原话、批注都放在正文右边；正文保持最终渲染的样子 ── */
+.wrap { position: relative; }
+:root { --side-w: clamp(300px, 27vw, 440px); }
+.side-mode .stage { padding-right: calc(var(--side-w) + 70px); }
+.notes-ctl { display: inline-flex; align-items: center; gap: 8px; }
+.notes-ctl select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 2px 6px; }
+.who-0 { --c: var(--p0); } .who-1 { --c: var(--p1); } .who-2 { --c: var(--p2); }
+.who { display: inline-flex; align-items: center; gap: 5px; font: 600 12px/1.4 var(--sans); color: var(--ink); white-space: nowrap; }
+.who::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.side-pin { position: absolute; left: calc(100% + 8px); margin-top: 2px; display: inline-flex; align-items: center; gap: 3px; min-width: 28px; height: 22px; padding: 0 7px;
+  border: 1px solid var(--line); border-radius: 11px; background: var(--surface); color: var(--ink-2); font: 600 11px/1 var(--sans); cursor: pointer; }
+.side-pin .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.side-pin.empty { opacity: .35; color: var(--muted); }
+.side-pin.empty:hover, .side-pin.empty:focus-visible { opacity: .9; }
+.side-pin.done { opacity: .55; }
+.side-pin:focus-visible { outline: 2px solid var(--ikb); outline-offset: 1px; }
+.side { position: absolute; left: calc(100% + 46px); width: var(--side-w); }
+.note-panel { padding: 10px 12px; border: 1px solid var(--line); border-left: 3px solid var(--ikb); border-radius: var(--radius);
+  background: var(--surface); display: grid; gap: 10px; font: 13px/1.55 var(--sans); }
+.note { display: grid; gap: 4px; }
+.note.resolved { opacity: .6; }
+.note-head { display: flex; align-items: center; gap: 10px; }
+.note-time { color: var(--muted); font-size: 11.5px; }
+.note-acts { margin-left: auto; display: flex; gap: 12px; }
+.linkish { background: none; border: 0; padding: 0; color: var(--ikb); font: 12px var(--sans); cursor: pointer; justify-self: start; }
+.note-text { white-space: pre-wrap; color: var(--ink); }
+.note-reply { margin-left: 12px; padding-left: 10px; border-left: 2px solid var(--line); display: grid; gap: 2px; }
+.note-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: start; }
+.note-form .who { grid-column: 1 / -1; }
+.note-form textarea { width: 100%; min-height: 52px; resize: vertical; font: 13px/1.5 var(--sans); color: var(--ink); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; }
+.orphans { margin-top: 4px; }
+.orphans-head { font-weight: 600; color: var(--ink); }
+.note-quote { color: var(--muted); font-size: 12px; }
+.rq { padding: 8px 12px; border-radius: var(--radius); background: var(--reject-bg); border-left: 3px solid var(--reject);
+  font: 12.5px/1.55 var(--sans); color: var(--ink-2); display: grid; gap: 8px; }
+.rq-item { display: grid; gap: 2px; }
+.rq-label { font-weight: 600; color: var(--reject); font-size: 11.5px; letter-spacing: .02em; }
+.rq .md p { margin: 0; }
+.rq-zh { color: var(--ink); border-top: 1px dashed color-mix(in srgb, var(--reject) 35%, transparent); padding-top: 4px; margin-top: 2px; }
+.note-q { color: var(--muted); font-size: 12px; border-left: 2px solid var(--line); padding-left: 8px; }
+.sel-btn { position: fixed; z-index: 30; padding: 4px 11px; border-radius: 14px; border: 0; background: var(--ikb); color: var(--surface);
+  font: 600 12px/1.4 var(--sans); box-shadow: 0 2px 8px rgba(0, 0, 0, .18); cursor: pointer; }
+::highlight(note-0) { background-color: color-mix(in srgb, var(--p0) 20%, transparent); }
+::highlight(note-1) { background-color: color-mix(in srgb, var(--p1) 24%, transparent); }
+::highlight(note-2) { background-color: color-mix(in srgb, var(--p2) 24%, transparent); }
 
 /* ── 渲染出来的 markdown（对齐 OpenReview 观感）──── */
 .md { font-size: 14.5px; line-height: 1.68; color: var(--ink); overflow-wrap: break-word; }
@@ -532,7 +582,7 @@ let restoring = true;            // 还原完成前不记位置，免得刚打�
 const readPos = () => { try { return JSON.parse(localStorage.getItem(POS_KEY) || "null"); } catch (e) { return null; } };
 const sig = el => (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120);
 const anchors = () => Array.from(stageEl.querySelectorAll(
-  ".thread-head, details.panel, .order-note, .thread-bar, .post-head, .post-body > *"
+  ".thread-head, details.panel, .order-note, .thread-bar, .post-head, .post-body > *:not(.note-pin)"
 )).filter(el => el.offsetParent !== null);
 
 function savePos() {
@@ -589,7 +639,7 @@ function drawRail() {
     const sub = document.createElement("span");
     sub.className = "sub";
     const n = t.posts.length, d = t.done.filter(Boolean).length;
-    sub.textContent = n ? `${d}/${n} 已发 · ${t.posts.reduce((a, p) => a + countChars(p), 0)} 字符` : "空白草稿板";
+    sub.textContent = (n ? `${d}/${n} 已发 · ${t.posts.reduce((a, p) => a + countChars(p), 0)} 字符` : "空白草稿板") + openNotesLabel(t.id);
 
     b.append(who, chip, sub);
     b.onclick = () => { active = t.id; drawRail(); drawThread(); window.scrollTo({ top: 0 }); savePos(); };
@@ -669,6 +719,12 @@ function drawThread() {
   const hint = document.createElement("span");
   hint.className = "save-hint";
   bar.append(barLabel, barSeg, Object.assign(document.createElement("span"), { className: "spacer" }), hint);
+  if (NOTES.on) bar.append(notesControls());
+  if (t.questions) {
+    const qb = Object.assign(document.createElement("button"), { type: "button", className: "tool", textContent: showQ ? "隐藏审稿人原话" : "显示审稿人原话" });
+    qb.onclick = () => { showQ = !showQ; try { localStorage.setItem(Q_KEY, showQ ? "1" : "0"); } catch (e) {} drawThread(); };
+    bar.append(qb);
+  }
   stageEl.append(bar);
   paintBackend();
 
@@ -678,6 +734,8 @@ function drawThread() {
     cards.push(card);
     stageEl.append(card.el);
   });
+  if (NOTES.on) appendOrphans(t);
+  layoutSide();
 
   // 操作
   const acts = document.createElement("div");
@@ -767,6 +825,7 @@ function postCard(t, i) {
   function paint() {
     body.innerHTML = renderMarkdown(t.posts[i]);
     dirty = false;
+    if (body.isConnected) scheduleSide();
   }
 
   // 计数立刻更新；重排版稍等一拍，长帖子打字才不卡
@@ -800,6 +859,7 @@ function postCard(t, i) {
     body.hidden = m === "src";
     seg.select(m);
     if (m !== "src" && dirty) paint();
+    scheduleSide();
     if (m === "src") {           // 单独看源码时撑开到全文（5000 字符的帖子够用），超长才内部滚动
       ta.style.height = "auto";
       ta.style.height = Math.min(ta.scrollHeight + 20, 2400) + "px";
@@ -885,9 +945,296 @@ function paintBackend() {
   });
 }
 
+/* ── 侧栏：审稿人原话 + 批注。正文保持最终渲染的样子，什么都不往里插 ───────
+   审稿人原话来自 REVIEWS.md（build_site 按 questions.json 取出），只在工作台显示。
+   批注每条一个文件（06_网站/批注/），三个人各写各的，git 合并不冲突。 */
+const Q_KEY = STORE + ":q";
+let showQ = true;
+try { showQ = localStorage.getItem(Q_KEY) !== "0"; } catch (e) {}
+const NOTES = { on: false, me: null, people: [], events: [] };
+const ME_KEY = STORE + ":me";
+const PIN_BLOCKS = ":scope > p, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > ul, :scope > ol, :scope > .table-scroll, :scope > pre, :scope > blockquote";
+const OPEN_KEYS = new Set();          // 点了「+」、要写新批注或展开已解决批注的段落
+const SIDE_MIN = 1100;                // 窗口再窄就没地方放侧栏了
+const sideMode = () => window.innerWidth >= SIDE_MIN;
+let sideTimer = 0;
+const scheduleSide = () => { clearTimeout(sideTimer); sideTimer = setTimeout(layoutSide, 40); };
+
+async function loadNotes() {
+  try {
+    const r = await fetch("api/notes", { cache: "no-store" });
+    if (!r.ok) return;
+    const d = await r.json();
+    NOTES.on = true; NOTES.people = d.people || []; NOTES.events = d.events || [];
+    let saved = null; try { saved = localStorage.getItem(ME_KEY); } catch (e) {}
+    NOTES.me = saved && NOTES.people.some(p => p.id === saved) ? saved : (d.me || null);
+  } catch (e) { /* 没起 serve.py：批注不可用 */ }
+}
+const personIdx = id => Math.max(0, NOTES.people.findIndex(p => p.id === id)) % 3;
+const person = id => NOTES.people.find(p => p.id === id) || { id, label: id || "?" };
+function whoChip(id) {
+  const p = person(id), s = document.createElement("span");
+  s.className = "who who-" + personIdx(id);
+  s.textContent = id ? p.label : "先在工具条选「批注身份」";
+  if (p.github) s.title = "GitHub: " + p.github;
+  return s;
+}
+function noteKey(el) {
+  const s = (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 160);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+const quoteOf = blk => (blk.textContent || "").replace(/\s+/g, " ").trim().slice(0, 140);
+function threadNotes(tid) {
+  const roots = new Map();
+  NOTES.events.filter(e => e.thread === tid).sort((a, b) => (a.time < b.time ? -1 : 1)).forEach(e => {
+    if (e.type === "note") roots.set(e.id, { ...e, replies: [], resolved: false });
+    else if (roots.has(e.parent)) {
+      const r = roots.get(e.parent);
+      if (e.type === "reply") r.replies.push(e);
+      if (e.type === "resolve") r.resolved = true;
+      if (e.type === "reopen") r.resolved = false;
+    }
+  });
+  return [...roots.values()];
+}
+function openNotesLabel(tid) {
+  if (!NOTES.on) return "";
+  const k = threadNotes(tid).filter(n => !n.resolved).length;
+  return k ? ` · 批注 ${k}` : "";
+}
+const fmtTime = s => { try { return new Date(s).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch (e) { return s; } };
+
+async function postNote(ev) {
+  if (!NOTES.me) { toast("先在工具条上选「批注身份」"); return null; }
+  try {
+    const r = await fetch("api/notes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...ev, author: NOTES.me }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.event) { toast("批注没存上：" + (d.error || r.status)); return null; }
+    NOTES.events.push(d.event);
+    drawRail();
+    return d.event;
+  } catch (e) { toast("批注没存上：serve.py 没在运行"); return null; }
+}
+function composer(placeholder, label, onSend) {
+  const f = document.createElement("div"); f.className = "note-form";
+  const ta = document.createElement("textarea"); ta.rows = 2; ta.placeholder = placeholder;
+  ta.setAttribute("aria-label", placeholder);
+  const b = Object.assign(document.createElement("button"), { type: "button", className: "tool", textContent: label });
+  const send = async () => { const text = ta.value.trim(); if (text && await onSend(text)) ta.value = ""; };
+  b.onclick = send;
+  ta.addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send(); });
+  f.append(whoChip(NOTES.me), ta, b);
+  return f;
+}
+function noteItem(t, n, rerender) {
+  const it = document.createElement("div"); it.className = "note" + (n.resolved ? " resolved" : "");
+  const head = document.createElement("div"); head.className = "note-head";
+  head.append(whoChip(n.author), Object.assign(document.createElement("span"), { className: "note-time", textContent: fmtTime(n.time) + (n.resolved ? " · 已解决" : "") }));
+  const acts = document.createElement("span"); acts.className = "note-acts";
+  const rb = Object.assign(document.createElement("button"), { type: "button", className: "linkish", textContent: "回复" });
+  const sb = Object.assign(document.createElement("button"), { type: "button", className: "linkish", textContent: n.resolved ? "重新打开" : "已解决" });
+  sb.onclick = async () => { if (await postNote({ type: n.resolved ? "reopen" : "resolve", thread: t.id, parent: n.id })) rerender(); };
+  rb.onclick = () => {
+    if (it.querySelector(".note-form")) return;
+    const f = composer("回复，⌘/Ctrl + Enter 发表", "回复", async text => !!(await postNote({ type: "reply", thread: t.id, parent: n.id, text })) && (rerender(), true));
+    it.append(f); f.querySelector("textarea").focus(); scheduleSide();
+  };
+  acts.append(rb, sb); head.append(acts);
+  it.append(head);
+  if (n.quote) it.append(Object.assign(document.createElement("div"), { className: "note-q", textContent: "「" + n.quote + "」" }));
+  it.append(Object.assign(document.createElement("div"), { className: "note-text", textContent: n.text }));
+  n.replies.forEach(r => {
+    const rr = document.createElement("div"); rr.className = "note-reply";
+    const h = document.createElement("div"); h.className = "note-head";
+    h.append(whoChip(r.author), Object.assign(document.createElement("span"), { className: "note-time", textContent: fmtTime(r.time) }));
+    rr.append(h, Object.assign(document.createElement("div"), { className: "note-text", textContent: r.text }));
+    it.append(rr);
+  });
+  return it;
+}
+function questionCard(qs) {
+  const box = document.createElement("aside"); box.className = "rq"; box.setAttribute("aria-label", "审稿人原话");
+  qs.forEach(q => {
+    const it = document.createElement("div"); it.className = "rq-item";
+    it.append(Object.assign(document.createElement("div"), { className: "rq-label", textContent: "审稿人原话 · " + q.label }));
+    const md = document.createElement("div"); md.className = "md"; md.innerHTML = renderMarkdown(q.text);
+    it.append(md);
+    if (q.zh) { const zh = document.createElement("div"); zh.className = "md rq-zh"; zh.innerHTML = renderMarkdown(q.zh); it.append(zh); }
+    box.append(it);
+  });
+  return box;
+}
+function noteCard(t, key, notes) {
+  const box = document.createElement("div"); box.className = "note-panel";
+  (OPEN_KEYS.has(key) ? notes : notes.filter(n => !n.resolved)).forEach(n => box.append(noteItem(t, n, layoutSide)));
+  return box;
+}
+let PENDING = null;                   // 选中文字、还没发表的批注 {key, quote}
+function pendingCard(t) {
+  const box = document.createElement("div"); box.className = "note-panel pending";
+  box.append(Object.assign(document.createElement("div"), { className: "note-q", textContent: "「" + PENDING.quote + "」" }));
+  box.append(composer("写批注，⌘/Ctrl + Enter 发表", "发表", async text => {
+    const ok = await postNote({ type: "note", thread: t.id, key: PENDING.key, quote: PENDING.quote, text });
+    if (ok) { PENDING = null; layoutSide(); }
+    return !!ok;
+  }));
+  const cancel = Object.assign(document.createElement("button"), { type: "button", className: "linkish", textContent: "取消" });
+  cancel.onclick = () => { PENDING = null; layoutSide(); };
+  box.append(cancel);
+  return box;
+}
+function sidePin(key, notes) {
+  const open = notes.filter(n => !n.resolved);
+  const pin = document.createElement("button"); pin.type = "button";
+  pin.className = "side-pin" + (open.length ? "" : " done");
+  [...new Set(notes.map(n => n.author))].forEach(a => pin.append(Object.assign(document.createElement("i"), { className: "dot who-" + personIdx(a) })));
+  pin.append(open.length ? String(open.length) : "✓");
+  pin.title = notes.map(n => person(n.author).label).join("、") + " 的批注" + (open.length < notes.length ? "（点开看已解决的）" : "");
+  pin.setAttribute("aria-label", pin.title);
+  pin.onclick = () => { if (OPEN_KEYS.has(key)) OPEN_KEYS.delete(key); else OPEN_KEYS.add(key); layoutSide(); };
+  return pin;
+}
+function layoutSide() {
+  stageEl.querySelectorAll(":scope > .side, :scope > .side-pin").forEach(x => x.remove());
+  const on = sideMode();
+  document.body.classList.toggle("side-mode", on);
+  const t = DATA.threads.find(x => x.id === active);
+  if (!on || !t) { applyHighlights(null); return; }
+  const base = stageEl.getBoundingClientRect().top;
+  const roots = NOTES.on ? threadNotes(t.id) : [];
+  const cards = [];
+  stageEl.querySelectorAll(".post-body").forEach(body => {
+    const post = body.closest(".post");
+    if (body.hidden || (post && post.classList.contains("mode-split"))) return;   // 对照模式正文会内部滚动，侧栏对不齐
+    if (showQ && t.questions) body.querySelectorAll(":scope > h1").forEach(h => {
+      const m = (h.textContent || "").trim().match(/^(\d+)\./);
+      const qs = m && t.questions[m[1]];
+      if (qs) cards.push({ anchor: h, el: questionCard(qs) });
+    });
+    if (!NOTES.on) return;
+    body.querySelectorAll(PIN_BLOCKS).forEach(blk => {
+      const key = noteKey(blk), mine = roots.filter(n => n.key === key);
+      if (mine.length) {
+        const pin = sidePin(key, mine);
+        pin.style.top = (blk.getBoundingClientRect().top - base) + "px";
+        stageEl.append(pin);
+      }
+      if (mine.some(n => !n.resolved) || (mine.length && OPEN_KEYS.has(key))) cards.push({ anchor: blk, el: noteCard(t, key, mine) });
+      if (PENDING && PENDING.key === key) cards.push({ anchor: blk, el: pendingCard(t) });
+    });
+  });
+  cards.forEach(c => { c.top = c.anchor.getBoundingClientRect().top - base; c.el.classList.add("side"); stageEl.append(c.el); });
+  cards.sort((a, b) => a.top - b.top);
+  let floor = -Infinity;
+  cards.forEach(c => { const top = Math.max(c.top, floor); c.el.style.top = top + "px"; floor = top + c.el.offsetHeight + 10; });
+  applyHighlights(t);
+}
+
+/* 被批注的文字：用浏览器的高亮层画底色，不改正文 DOM，排版和最终渲染一致 */
+function findRange(blk, quote) {
+  const walker = document.createTreeWalker(blk, NodeFilter.SHOW_TEXT);
+  const nodes = []; let text = "";
+  while (walker.nextNode()) { nodes.push([walker.currentNode, text.length]); text += walker.currentNode.data; }
+  let norm = "", map = [], prev = false;
+  for (let k = 0; k < text.length; k++) {
+    const sp = /\s/.test(text[k]);
+    if (sp && prev) continue;
+    norm += sp ? " " : text[k]; map.push(k); prev = sp;
+  }
+  const at = norm.indexOf(quote);
+  if (at < 0 || !quote) return null;
+  const a = map[at], b = map[at + quote.length - 1] + 1;
+  const loc = pos => { for (let k = nodes.length - 1; k >= 0; k--) if (nodes[k][1] <= pos) return [nodes[k][0], pos - nodes[k][1]]; return null; };
+  const [sn, so] = loc(a), [en, eo] = loc(b - 1);
+  const r = document.createRange(); r.setStart(sn, so); r.setEnd(en, eo + 1);
+  return r;
+}
+function applyHighlights(t) {
+  if (!window.CSS || !CSS.highlights || typeof Highlight === "undefined") return;
+  const hs = [new Highlight(), new Highlight(), new Highlight()];
+  const roots = t && NOTES.on ? threadNotes(t.id).filter(n => !n.resolved && n.quote) : [];
+  if (roots.length) stageEl.querySelectorAll(".post-body").forEach(body => {
+    if (body.hidden) return;
+    body.querySelectorAll(PIN_BLOCKS).forEach(blk => {
+      const key = noteKey(blk);
+      roots.filter(n => n.key === key).forEach(n => { const r = findRange(blk, n.quote); if (r) hs[personIdx(n.author)].add(r); });
+    });
+  });
+  hs.forEach((h, k) => CSS.highlights.set("note-" + k, h));
+}
+
+/* 选中一段话 → 旁边出现「批注」按钮 */
+const BLOCK_SEL = PIN_BLOCKS.replace(/:scope > /g, "");
+const selBtn = Object.assign(document.createElement("button"), { type: "button", className: "sel-btn", textContent: "批注" });
+selBtn.hidden = true;
+document.body.append(selBtn);
+selBtn.addEventListener("mousedown", e => e.preventDefault());   // 点按钮时别把选区弄丢
+function blockOf(node) {
+  let el = node && (node.nodeType === 1 ? node : node.parentElement);
+  while (el && el.parentElement && !el.parentElement.classList.contains("post-body")) el = el.parentElement;
+  return el && el.parentElement && el.parentElement.classList.contains("post-body") && el.matches(BLOCK_SEL) ? el : null;
+}
+function onSelection() {
+  const sel = window.getSelection();
+  const blk = sel && !sel.isCollapsed && sel.rangeCount ? blockOf(sel.anchorNode) : null;
+  const text = blk ? sel.toString().replace(/\s+/g, " ").trim() : "";
+  if (!NOTES.on || !sideMode() || !blk || !text) { selBtn.hidden = true; return; }
+  const r = sel.getRangeAt(0).getBoundingClientRect();
+  selBtn.style.left = Math.min(window.innerWidth - 70, r.right + 6) + "px";
+  selBtn.style.top = Math.max(56, r.top - 32) + "px";
+  selBtn.hidden = false;
+  selBtn.onclick = () => {
+    PENDING = { key: noteKey(blk), quote: text.slice(0, 300) };
+    selBtn.hidden = true; sel.removeAllRanges(); layoutSide();
+    const ta = stageEl.querySelector(".side.pending textarea"); if (ta) ta.focus();
+  };
+}
+document.addEventListener("mouseup", e => { if (e.target !== selBtn) setTimeout(onSelection, 0); });
+document.addEventListener("keyup", e => { if (e.shiftKey) onSelection(); });
+window.addEventListener("scroll", () => { selBtn.hidden = true; }, true);
+function appendOrphans(t) {
+  const keys = new Set(), tmp = document.createElement("div");
+  t.posts.forEach(src => { tmp.innerHTML = renderMarkdown(src); tmp.querySelectorAll(PIN_BLOCKS).forEach(b => keys.add(noteKey(b))); });
+  const lost = threadNotes(t.id).filter(n => !keys.has(n.key));
+  if (!lost.length) return;
+  const box = document.createElement("div"); box.className = "note-panel orphans";
+  box.append(Object.assign(document.createElement("div"), { className: "orphans-head", textContent: `${lost.length} 条批注对应的原文已经改过` }));
+  lost.forEach(n => box.append(Object.assign(document.createElement("div"), { className: "note-quote", textContent: "原文：" + (n.quote || "…") }), noteItem(t, n, () => drawThread())));
+  stageEl.append(box);
+}
+function notesControls() {
+  const wrap = document.createElement("span"); wrap.className = "notes-ctl";
+  const sel = document.createElement("select"); sel.id = "notes-me"; sel.setAttribute("aria-label", "批注身份");
+  sel.append(new Option("选择…", ""));
+  NOTES.people.forEach(p => sel.append(new Option(p.label, p.id)));
+  sel.value = NOTES.me || "";
+  sel.onchange = () => { NOTES.me = sel.value || null; try { localStorage.setItem(ME_KEY, sel.value); } catch (e) {} layoutSide(); };
+  const btn = Object.assign(document.createElement("button"), { type: "button", className: "tool", textContent: "同步批注" });
+  btn.onclick = async () => {
+    btn.disabled = true; btn.textContent = "同步中…";
+    try {
+      const r = await fetch("api/notes/sync", { method: "POST" });
+      const d = await r.json().catch(() => ({}));
+      toast(d.ok ? "批注已同步" : "同步没成功：在命令行跑一次 git pull 看看");
+      if (!d.ok) console.warn((d.log || []).join("\n"));
+      await loadNotes(); drawRail(); drawThread();
+    } catch (e) { toast("同步没成功：serve.py 没在运行"); }
+    finally { btn.disabled = false; btn.textContent = "同步批注"; }
+  };
+  wrap.append(Object.assign(document.createElement("span"), { textContent: "批注身份" }), sel, btn);
+  return wrap;
+}
+window.addEventListener("resize", scheduleSide);
+stageEl.addEventListener("toggle", scheduleSide, true);   // 审稿意见面板展开 / 收起会让下面整体移位
+
+
 (async function init() {
   await loadStore();
   hydrate();
+  await loadNotes();
+  document.body.classList.toggle("notes-on", NOTES.on);
   const pos = readPos();
   if (pos && DATA.threads.some(t => t.id === pos.active)) active = pos.active;
   drawRail();
@@ -899,6 +1246,7 @@ function paintBackend() {
   restorePos(pos);
   try { await document.fonts.ready; } catch (e) {}   // 内联字体加载完行高会变，再对一次
   restorePos(pos);
+  layoutSide();
   restoring = false;
 })();
 </script>
