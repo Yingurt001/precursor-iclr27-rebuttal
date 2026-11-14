@@ -1,0 +1,904 @@
+<meta charset="utf-8">
+<title>Precursor Rebuttal 工作台 · ICLR 2027</title>
+<style>
+__KATEX_CSS__
+
+:root {
+  color-scheme: light dark;
+
+  /* Klein 模型 → Yves Klein IKB 作为强调色 */
+  --ikb:        #002FA7;
+  --ikb-soft:   #E7EBF8;
+  --ground:     #E9ECF2;
+  --surface:    #FFFFFF;
+  --surface-2:  #F4F6FA;
+  --ink:        #171B24;
+  --ink-2:      #414957;
+  --muted:      #6B7383;
+  --line:       #DCE0E9;
+  --line-soft:  #E8EBF1;
+  --accept:     #0E6E5C;
+  --accept-bg:  #E1F1ED;
+  --reject:     #94540A;
+  --reject-bg:  #F7EEDF;
+  --danger:     #A81E12;
+  --danger-bg:  #FBEAE8;
+  --done:       #0E6E5C;
+
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", ui-serif, Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --rail: 268px;
+  --radius: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ikb:        #7A97FF;
+    --ikb-soft:   #1A2340;
+    --ground:     #0C0F14;
+    --surface:    #141922;
+    --surface-2:  #1A202B;
+    --ink:        #E3E8F2;
+    --ink-2:      #B6BECC;
+    --muted:      #838C9C;
+    --line:       #262E3B;
+    --line-soft:  #1F2632;
+    --accept:     #4BC2A5;
+    --accept-bg:  #10302A;
+    --reject:     #DDA33F;
+    --reject-bg:  #33270F;
+    --danger:     #F08076;
+    --danger-bg:  #3A1A17;
+    --done:       #4BC2A5;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ikb:        #7A97FF;
+  --ikb-soft:   #1A2340;
+  --ground:     #0C0F14;
+  --surface:    #141922;
+  --surface-2:  #1A202B;
+  --ink:        #E3E8F2;
+  --ink-2:      #B6BECC;
+  --muted:      #838C9C;
+  --line:       #262E3B;
+  --line-soft:  #1F2632;
+  --accept:     #4BC2A5;
+  --accept-bg:  #10302A;
+  --reject:     #DDA33F;
+  --reject-bg:  #33270F;
+  --danger:     #F08076;
+  --danger-bg:  #3A1A17;
+  --done:       #4BC2A5;
+}
+
+:root[data-theme="light"] {
+  --ikb:        #002FA7;
+  --ikb-soft:   #E7EBF8;
+  --ground:     #E9ECF2;
+  --surface:    #FFFFFF;
+  --surface-2:  #F4F6FA;
+  --ink:        #171B24;
+  --ink-2:      #414957;
+  --muted:      #6B7383;
+  --line:       #DCE0E9;
+  --line-soft:  #E8EBF1;
+  --accept:     #0E6E5C;
+  --accept-bg:  #E1F1ED;
+  --reject:     #94540A;
+  --reject-bg:  #F7EEDF;
+  --danger:     #A81E12;
+  --danger-bg:  #FBEAE8;
+  --done:       #0E6E5C;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font: inherit; color: inherit; cursor: pointer; }
+a { color: var(--ikb); }
+:focus-visible { outline: 2px solid var(--ikb); outline-offset: 2px; border-radius: 3px; }
+
+/* ── 顶栏 ───────────────────────────────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: baseline; gap: 14px;
+  padding: 13px 22px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.topbar .venue {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted); white-space: nowrap;
+}
+.topbar h1 {
+  margin: 0; font-family: var(--serif); font-weight: 600;
+  font-size: 18px; letter-spacing: -.01em; text-wrap: balance;
+}
+.topbar .spacer { flex: 1; }
+.chip-btn {
+  border: 1px solid var(--line); background: var(--surface-2);
+  border-radius: 100px; padding: 4px 12px; font-size: 12px; color: var(--ink-2);
+}
+.chip-btn:hover { border-color: var(--ikb); color: var(--ikb); }
+
+/* ── 布局 ───────────────────────────────────────── */
+.shell { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); }
+
+.rail {
+  position: sticky; top: 51px; align-self: start;
+  height: calc(100vh - 51px); overflow-y: auto;
+  padding: 20px 14px 40px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.rail-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+  padding: 14px 8px 4px;
+}
+.rail-label:first-child { padding-top: 0; }
+
+.node {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px;
+  width: 100%; text-align: left;
+  padding: 9px 10px; border: 1px solid transparent; border-radius: var(--radius);
+  background: none;
+}
+.node:hover { background: var(--surface-2); }
+.node[aria-current="true"] { background: var(--ikb-soft); border-color: color-mix(in srgb, var(--ikb) 26%, transparent); }
+.node .who { font-weight: 600; font-size: 13.5px; }
+.node .sub {
+  grid-column: 1 / -1; font-family: var(--mono); font-size: 10.5px;
+  color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.node[aria-current="true"] .sub { color: color-mix(in srgb, var(--ikb) 72%, var(--ink)); }
+
+.rating {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  padding: 1px 7px; border-radius: 100px; white-space: nowrap;
+}
+.rating.r4 { background: var(--accept-bg); color: var(--accept); }
+.rating.r3 { background: var(--reject-bg); color: var(--reject); }
+.rating.rm { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+
+/* ── 主区 ───────────────────────────────────────── */
+.stage { padding: 26px 30px 120px; min-width: 0; }
+.wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+
+.thread-head { display: flex; flex-direction: column; gap: 6px; }
+.thread-head .eyebrow {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted);
+}
+.thread-head h2 {
+  margin: 0; font-family: var(--serif); font-size: 26px; font-weight: 600;
+  letter-spacing: -.015em;
+}
+.thread-stats {
+  display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 2px;
+  font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.thread-stats b { color: var(--ink-2); font-weight: 600; }
+
+/* 折叠面板 */
+details.panel {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+}
+details.panel > summary {
+  list-style: none; cursor: pointer; padding: 11px 16px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 600; color: var(--ink-2);
+}
+details.panel > summary::-webkit-details-marker { display: none; }
+details.panel > summary::before {
+  content: "▸"; color: var(--muted); font-size: 10px; transition: transform .15s;
+}
+details.panel[open] > summary::before { transform: rotate(90deg); }
+details.panel[open] > summary { border-bottom: 1px solid var(--line-soft); }
+.panel-body { padding: 4px 20px 18px; }
+
+/* 审稿意见正文 */
+.review-fields {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 2px 20px; padding: 12px 0 4px;
+  font-size: 12.5px;
+}
+.review-fields div { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px dotted var(--line); }
+.review-fields dt { color: var(--muted); min-width: 92px; }
+.review-fields dd { margin: 0; color: var(--ink-2); }
+
+.rv h4 {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--ikb);
+  margin: 20px 0 6px;
+}
+.rv p { font-family: var(--serif); font-size: 15px; line-height: 1.72; color: var(--ink-2); margin: 0 0 10px; }
+
+/* 发帖顺序提示 */
+.order-note {
+  display: flex; gap: 11px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--line);
+  border-left: 3px solid var(--ikb);
+  border-radius: var(--radius); padding: 11px 15px;
+  font-size: 13px; color: var(--ink-2);
+}
+.order-note code {
+  font-family: var(--mono); font-size: 12px;
+  background: var(--surface-2); padding: 1px 5px; border-radius: 3px;
+}
+
+/* ── 帖子卡片 ───────────────────────────────────── */
+.post {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); overflow: hidden;
+}
+.post.over { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.post.posted { opacity: .72; }
+
+.post-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 12px 8px 14px;
+  background: var(--surface-2); border-bottom: 1px solid var(--line-soft);
+}
+.seq {
+  font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+  color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.meter {
+  flex: 1; min-width: 60px; height: 4px; border-radius: 100px;
+  background: var(--line); overflow: hidden;
+}
+.meter i { display: block; height: 100%; background: var(--ikb); transition: width .12s linear; }
+.post.over .meter i { background: var(--danger); }
+.count {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.post.over .count { color: var(--danger); font-weight: 600; }
+
+.tools { display: flex; gap: 4px; }
+.tool {
+  border: 1px solid transparent; background: none; border-radius: 4px;
+  padding: 3px 9px; font-size: 12px; color: var(--muted);
+}
+.tool:hover { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.tool[aria-pressed="true"] { background: var(--ikb-soft); border-color: color-mix(in srgb, var(--ikb) 30%, transparent); color: var(--ikb); }
+.tool.ok { color: var(--done); }
+
+/* 渲染 / 源码 / 对照 三档切换 */
+.seg {
+  display: inline-flex; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 5px; overflow: hidden;
+}
+.seg button {
+  border: 0; background: none; padding: 3px 11px;
+  font-size: 12px; color: var(--muted); white-space: nowrap;
+}
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button:hover { color: var(--ink); background: var(--surface-2); }
+.seg button[aria-pressed="true"] { background: var(--ikb); color: var(--surface); font-weight: 600; }
+
+.panes { display: grid; grid-template-columns: minmax(0, 1fr); }
+
+.post-src {
+  display: block; width: 100%; border: 0; resize: vertical;
+  padding: 16px 20px; min-height: 300px;
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.7;
+  background: var(--surface-2); color: var(--ink);
+  tab-size: 2; white-space: pre-wrap;
+}
+.post-src:focus { outline: none; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ikb) 35%, transparent); }
+.post-src[hidden] { display: none; }
+
+.post-body { padding: 4px 20px 18px; }
+.post-body[hidden] { display: none; }
+.post-body:empty::after {
+  content: "把 rebuttal 粘进来，这里实时渲染。"; color: var(--muted); font-size: 13px;
+  display: block; padding: 14px 0;
+}
+
+/* 对照：左源码右渲染，各自滚动，改一个字右边立刻变 */
+.post.mode-split .panes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.post.mode-split .post-src {
+  border-right: 1px solid var(--line); resize: none;
+  max-height: 660px; overflow-y: auto;
+}
+.post.mode-split .post-body { max-height: 660px; overflow-y: auto; }
+@media (max-width: 1150px) {
+  .post.mode-split .panes { grid-template-columns: minmax(0, 1fr); }
+  .post.mode-split .post-src { border-right: 0; border-bottom: 1px solid var(--line); }
+}
+
+/* 线程级：一次切换本线程全部帖子 */
+.thread-bar { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); }
+.thread-bar .spacer { flex: 1; }
+
+/* ── 渲染出来的 markdown（对齐 OpenReview 观感）──── */
+.md { font-size: 14.5px; line-height: 1.68; color: var(--ink); overflow-wrap: break-word; }
+.md > *:first-child { margin-top: 12px; }
+.md h1, .md h2, .md h3, .md h4 {
+  font-family: var(--sans); font-weight: 650; line-height: 1.35;
+  margin: 22px 0 8px; letter-spacing: -.005em; text-wrap: balance;
+}
+.md h1 { font-size: 19px; } .md h2 { font-size: 17px; }
+.md h3 { font-size: 15.5px; } .md h4 { font-size: 14.5px; }
+.md p { margin: 0 0 11px; }
+.md ul, .md ol { margin: 0 0 11px; padding-left: 24px; }
+.md li { margin: 3px 0; }
+.md blockquote {
+  margin: 0 0 12px; padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--line); color: var(--ink-2);
+}
+.md hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
+.md code {
+  font-family: var(--mono); font-size: .88em;
+  background: var(--surface-2); padding: 1px 5px; border-radius: 3px;
+}
+.md pre {
+  background: var(--surface-2); border: 1px solid var(--line-soft);
+  border-radius: var(--radius); padding: 12px 14px; overflow-x: auto;
+}
+.md pre code { background: none; padding: 0; }
+
+.table-scroll { overflow-x: auto; margin: 0 0 14px; }
+.md table {
+  border-collapse: collapse; font-size: 13px; width: auto; min-width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+.md th, .md td {
+  border: 1px solid var(--line); padding: 5px 11px; text-align: left; white-space: nowrap;
+}
+.md th { background: var(--surface-2); font-weight: 650; }
+.md tbody tr:hover { background: color-mix(in srgb, var(--ikb) 4%, transparent); }
+
+.katex { font-size: 1.02em; }
+.katex-display { overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+.katex-error { color: var(--danger) !important; }
+
+/* ── 底部操作 ───────────────────────────────────── */
+.thread-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.act {
+  border: 1px solid var(--line); background: var(--surface);
+  border-radius: var(--radius); padding: 7px 14px; font-size: 13px; color: var(--ink-2);
+}
+.act:hover { border-color: var(--ikb); color: var(--ikb); }
+.act.warn:hover { border-color: var(--danger); color: var(--danger); }
+
+.toast {
+  position: fixed; left: 50%; bottom: 30px; transform: translate(-50%, 14px);
+  background: var(--ink); color: var(--ground);
+  padding: 9px 18px; border-radius: 100px; font-size: 13px;
+  opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 60;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+@media (max-width: 860px) {
+  .shell { grid-template-columns: 1fr; }
+  .rail { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .stage { padding: 20px 16px 90px; }
+  .topbar h1 { font-size: 15px; }
+}
+</style>
+
+<header class="topbar">
+  <span class="venue">ICLR 2027 · Sub. 32929</span>
+  <h1>When Early Is Not Early: The Precursor Illusion</h1>
+  <span class="spacer"></span>
+  <button class="chip-btn" id="themeBtn" type="button">主题</button>
+</header>
+
+<div class="shell">
+  <nav class="rail" id="rail" aria-label="Forum threads"></nav>
+  <main class="stage"><div class="wrap" id="stage"></div></main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>__KATEX_JS__</script>
+<script>__MARKED_JS__</script>
+<script>
+const DATA = __DATA__;
+const LIMIT = 5000;
+const STORE = "precursor-iclr27-rebuttal-v1";
+const MODES = [["view", "渲染"], ["src", "源码"], ["split", "对照"]];
+
+/* ── 存档：优先写磁盘（serve.py），没有服务就退回浏览器 ── */
+let saved = {};
+let backend = "local";          // "disk" | "local"
+let diskState = "";             // "" | "saving" | "saved" | "error"
+
+const readLocal = () => { try { return JSON.parse(localStorage.getItem(STORE) || "{}"); } catch (e) { return {}; } };
+
+async function loadStore() {
+  try {
+    const r = await fetch("api/edits", { cache: "no-store" });
+    if (r.ok) {
+      const disk = await r.json();
+      backend = "disk";
+      saved = (disk && typeof disk === "object") ? disk : {};
+      if (!Object.keys(saved).length) {          // 第一次起服务：把浏览器里已有的改动搬上磁盘
+        const local = readLocal();
+        if (Object.keys(local).length) { saved = local; persist(); }
+      }
+      return;
+    }
+  } catch (e) { /* 没起 serve.py，或用的是线上链接 */ }
+  saved = readLocal();
+}
+
+let saveTimer = 0;
+function persist() {
+  try { localStorage.setItem(STORE, JSON.stringify(saved)); } catch (e) {}
+  if (backend !== "disk") return;
+  diskState = "saving"; paintBackend();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      const r = await fetch("api/edits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(saved),
+      });
+      diskState = r.ok ? "saved" : "error";
+    } catch (e) { diskState = "error"; }
+    paintBackend();
+  }, 600);
+}
+
+let defaultMode = "view";       // 上次选的显示模式，loadStore 之后再定
+const setDefaultMode = m => { defaultMode = saved.__mode = m; persist(); };
+
+function hydrate() {
+  if (MODES.some(m => m[0] === saved.__mode)) defaultMode = saved.__mode;
+  DATA.threads.forEach(t => {
+    const s = saved[t.id];
+    t.posts = (s && Array.isArray(s.posts)) ? s.posts.slice() : t.origin ? t.origin.slice() : t.posts.slice();
+    t.done  = (s && Array.isArray(s.done))  ? s.done.slice()  : t.posts.map(() => false);
+    while (t.done.length < t.posts.length) t.done.push(false);
+  });
+}
+const snapshot = t => { saved[t.id] = { posts: t.posts, done: t.done }; persist(); };
+
+/* ── Markdown + KaTeX（OpenReview 用的就是这套）── */
+function renderMarkdown(src) {
+  const math = [];
+  const stash = (tex, display) => "%%KX" + (math.push({ tex, display }) - 1) + "KX%%";
+
+  // 先把代码块和行内代码挡住，避免里面的 $ 被当成公式
+  const code = [];
+  let s = String(src || "")
+    .replace(/```[\s\S]*?```/g, m => "%%CD" + (code.push(m) - 1) + "CD%%")
+    .replace(/`[^`\n]*`/g, m => "%%CD" + (code.push(m) - 1) + "CD%%");
+
+  s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => stash(tex, true));
+  s = s.replace(/(^|[^\\$])\$(?!\s*\$)([^\n$]+?)\$/g, (_, pre, tex) => pre + stash(tex, false));
+  s = s.replace(/%%CD(\d+)CD%%/g, (_, i) => code[+i]);
+
+  let html = marked.parse(s, { gfm: true, breaks: false, mangle: false, headerIds: false });
+
+  // 公式外面包一层 notranslate：翻译插件（沉浸式翻译/谷歌）会把 KaTeX 内部的
+  // 单字符 span 逐个"翻译"，公式直接稀碎。代码块同理。
+  html = html.replace(/%%KX(\d+)KX%%/g, (_, i) => {
+    const m = math[+i];
+    try {
+      const tex = katex.renderToString(m.tex, { displayMode: m.display, throwOnError: false, strict: false });
+      return '<span translate="no" class="notranslate">' + tex + "</span>";
+    } catch (e) {
+      return '<code translate="no" class="notranslate katex-error">' + m.tex.replace(/</g, "&lt;") + "</code>";
+    }
+  });
+
+  html = html
+    .replace(/<pre>/g, '<pre translate="no" class="notranslate">')
+    .replace(/<code>/g, '<code translate="no" class="notranslate">');
+
+  // 宽表格自己横向滚动，页面不跟着晃
+  return html.replace(/<table>/g, '<div class="table-scroll"><table>').replace(/<\/table>/g, "</table></div>");
+}
+
+const countChars = s => Array.from(s || "").length;
+
+/* ── 左侧论坛树 ────────────────────────────────── */
+let active = DATA.threads[0].id;
+const railEl = document.getElementById("rail");
+const stageEl = document.getElementById("stage");
+
+/* ── 刷新后回到原处 ──────────────────────────────
+   记三样：当前线程、审稿意见面板开没开、视口顶上那一段的开头文字和它离视口顶多远。
+   重建页面后按文字找回那一段再对齐；稿子改过、文字对不上时退回原来的 scrollY。
+   只存在这个浏览器里，不进 edits/。 */
+const POS_KEY = STORE + ":pos";
+try { history.scrollRestoration = "manual"; } catch (e) {}
+let restoring = true;            // 还原完成前不记位置，免得刚打开时的顶部把旧位置盖掉
+const readPos = () => { try { return JSON.parse(localStorage.getItem(POS_KEY) || "null"); } catch (e) { return null; } };
+const sig = el => (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120);
+const anchors = () => Array.from(stageEl.querySelectorAll(
+  ".thread-head, details.panel, .order-note, .thread-bar, .post-head, .post-body > *"
+)).filter(el => el.offsetParent !== null);
+
+function savePos() {
+  if (restoring) return;
+  const list = anchors();
+  const i = list.findIndex(el => el.getBoundingClientRect().bottom > 60);   // 60 = 顶栏高度
+  const pos = { active, y: window.scrollY, review: !!stageEl.querySelector("details.panel[open]") };
+  if (i >= 0) Object.assign(pos, { i, sig: sig(list[i]), off: list[i].getBoundingClientRect().top });
+  try { localStorage.setItem(POS_KEY, JSON.stringify(pos)); } catch (e) {}
+}
+let posTimer = 0;
+window.addEventListener("scroll", () => { clearTimeout(posTimer); posTimer = setTimeout(savePos, 150); }, { passive: true });
+window.addEventListener("pagehide", savePos);
+stageEl.addEventListener("toggle", savePos, true);   // 审稿意见面板开合
+
+function restorePos(pos) {
+  if (!pos || pos.active !== active) return;
+  const list = anchors();
+  let best = -1;
+  if (pos.sig) list.forEach((el, k) => {
+    if (sig(el) === pos.sig && (best < 0 || Math.abs(k - pos.i) < Math.abs(best - pos.i))) best = k;
+  });
+  const y = best >= 0 ? list[best].getBoundingClientRect().top + window.scrollY - pos.off : pos.y;
+  window.scrollTo({ top: Math.max(0, y) });
+}
+
+// ICLR 2027 量表：1 Clear rejection · 2 Weak rejection · 3 Weak acceptance（最高几分未核）
+function ratingClass(r) { return !r ? "rm" : r >= 3 ? "r4" : "r3"; }
+
+function drawRail() {
+  railEl.replaceChildren();
+  let group = null;
+  DATA.threads.forEach(t => {
+    if (t.group !== group) {
+      group = t.group;
+      const lab = document.createElement("div");
+      lab.className = "rail-label";
+      lab.textContent = group;
+      railEl.append(lab);
+    }
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "node";
+    b.setAttribute("aria-current", String(t.id === active));
+
+    const who = document.createElement("span");
+    who.className = "who";
+    who.textContent = t.short;
+
+    const chip = document.createElement("span");
+    chip.className = "rating " + ratingClass(t.rating);
+    chip.textContent = t.rating ? t.rating + " 分" : "顶层";
+
+    const sub = document.createElement("span");
+    sub.className = "sub";
+    const n = t.posts.length, d = t.done.filter(Boolean).length;
+    sub.textContent = n ? `${d}/${n} 已发 · ${t.posts.reduce((a, p) => a + countChars(p), 0)} 字符` : "空白草稿板";
+
+    b.append(who, chip, sub);
+    b.onclick = () => { active = t.id; drawRail(); drawThread(); window.scrollTo({ top: 0 }); savePos(); };
+    railEl.append(b);
+  });
+}
+
+/* ── 主区 ──────────────────────────────────────── */
+function drawThread() {
+  const t = DATA.threads.find(x => x.id === active);
+  stageEl.replaceChildren();
+
+  // 标题
+  const head = document.createElement("div");
+  head.className = "thread-head";
+  head.innerHTML =
+    `<span class="eyebrow">${t.group} · ${t.noteId ? "Note " + t.noteId : "新建"}</span>` +
+    `<h2>${t.title}</h2>`;
+  const stats = document.createElement("div");
+  stats.className = "thread-stats";
+  head.append(stats);
+  stageEl.append(head);
+
+  // 审稿意见
+  if (t.review) {
+    const d = document.createElement("details");
+    d.className = "panel";
+    const sum = document.createElement("summary");
+    sum.textContent = t.id === "ac" ? "AC meta-review 原文" : `Reviewer ${t.short} 审稿意见原文`;
+    const body = document.createElement("div");
+    body.className = "panel-body";
+
+    if (t.review.fields && Object.keys(t.review.fields).length) {
+      const dl = document.createElement("dl");
+      dl.className = "review-fields";
+      Object.entries(t.review.fields).forEach(([k, v]) => {
+        const row = document.createElement("div");
+        const dt = document.createElement("dt"); dt.textContent = k;
+        const dd = document.createElement("dd"); dd.textContent = v;
+        row.append(dt, dd); dl.append(row);
+      });
+      body.append(dl);
+    }
+    const rv = document.createElement("div");
+    rv.className = "rv";
+    t.review.blocks.forEach(b => {
+      const h = document.createElement("h4"); h.textContent = b.title;
+      const p = document.createElement("div"); p.className = "md"; p.innerHTML = renderMarkdown(b.md);
+      rv.append(h, p);
+    });
+    body.append(rv);
+    d.append(sum, body);
+    stageEl.append(d);
+  }
+
+  // 发帖顺序
+  if (t.posts.length > 1) {
+    const note = document.createElement("div");
+    note.className = "order-note";
+    note.innerHTML =
+      `<div><b>倒序发帖。</b>OpenReview 把最新回复排在最上面，所以要先发 ` +
+      `<code>${t.posts.length}/${t.posts.length}</code> 最后发 <code>1/${t.posts.length}</code>，` +
+      `页面上才是正序。发一条勾一条。</div>`;
+    stageEl.append(note);
+  }
+
+  // 显示模式（整条线程一起切）
+  const cards = [];
+  const bar = document.createElement("div");
+  bar.className = "thread-bar";
+  const barLabel = document.createElement("span");
+  barLabel.textContent = "显示模式";
+  const barSeg = segControl(defaultMode, m => {
+    setDefaultMode(m);
+    cards.forEach(c => c.setMode(m));
+  });
+  const hint = document.createElement("span");
+  hint.className = "save-hint";
+  bar.append(barLabel, barSeg, Object.assign(document.createElement("span"), { className: "spacer" }), hint);
+  stageEl.append(bar);
+  paintBackend();
+
+  // 帖子
+  t.posts.forEach((_, i) => {
+    const card = postCard(t, i);
+    cards.push(card);
+    stageEl.append(card.el);
+  });
+
+  // 操作
+  const acts = document.createElement("div");
+  acts.className = "thread-actions";
+
+  const add = document.createElement("button");
+  add.className = "act"; add.type = "button"; add.textContent = "＋ 新增一条";
+  add.onclick = () => { t.posts.push(""); t.done.push(false); snapshot(t); drawRail(); drawThread(); };
+  acts.append(add);
+
+  if (t.origin) {
+    const reset = document.createElement("button");
+    reset.className = "act warn"; reset.type = "button"; reset.textContent = "恢复文件原始内容";
+    reset.onclick = () => {
+      if (!confirm("放弃本页改动，恢复成 00_提交/ 里的内容？")) return;
+      t.posts = t.origin.slice(); t.done = t.origin.map(() => false);
+      snapshot(t); drawRail(); drawThread(); toast("已恢复");
+    };
+    acts.append(reset);
+  }
+  stageEl.append(acts);
+
+  refreshStats(t, stats);
+}
+
+function refreshStats(t, el) {
+  const n = t.posts.length;
+  const total = t.posts.reduce((a, p) => a + countChars(p), 0);
+  const over = t.posts.filter(p => countChars(p) > LIMIT).length;
+  const done = t.done.filter(Boolean).length;
+  el.innerHTML =
+    `<span><b>${n}</b> 条</span>` +
+    `<span>共 <b>${total.toLocaleString()}</b> 字符</span>` +
+    `<span>已发 <b>${done}/${n}</b></span>` +
+    (over ? `<span style="color:var(--danger)"><b>${over}</b> 条超 5000 字符上限</span>` : `<span>全部在 5000 字符内</span>`);
+}
+
+function postCard(t, i) {
+  const el = document.createElement("article");
+  el.className = "post";
+
+  const head = document.createElement("div");
+  head.className = "post-head";
+
+  const seq = document.createElement("span");
+  seq.className = "seq";
+  seq.textContent = t.posts.length > 1 ? `${i + 1} / ${t.posts.length}` : "单条";
+
+  const meter = document.createElement("span");
+  meter.className = "meter";
+  const bar = document.createElement("i");
+  meter.append(bar);
+
+  const count = document.createElement("span");
+  count.className = "count";
+
+  const tools = document.createElement("div");
+  tools.className = "tools";
+
+  const seg = segControl(defaultMode, m => setMode(m));
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "tool"; copyBtn.type = "button"; copyBtn.textContent = "复制";
+  const doneBtn = document.createElement("button");
+  doneBtn.className = "tool"; doneBtn.type = "button";
+  const delBtn = document.createElement("button");
+  delBtn.className = "tool"; delBtn.type = "button"; delBtn.textContent = "删除";
+
+  tools.append(seg, copyBtn, doneBtn, delBtn);
+  head.append(seq, meter, count, tools);
+
+  const panes = document.createElement("div");
+  panes.className = "panes";
+
+  const ta = document.createElement("textarea");
+  ta.className = "post-src";
+  ta.spellcheck = false;
+  ta.value = t.posts[i];
+  ta.setAttribute("aria-label", `第 ${i + 1} 条 markdown 源码`);
+  ta.placeholder = "在这里粘贴 rebuttal（Markdown + $LaTeX$），切到「对照」就能边改边看。";
+
+  const body = document.createElement("div");
+  body.className = "post-body md";
+  panes.append(ta, body);
+
+  let dirty = false, renderTimer = 0;
+
+  function paint() {
+    body.innerHTML = renderMarkdown(t.posts[i]);
+    dirty = false;
+  }
+
+  // 计数立刻更新；重排版稍等一拍，长帖子打字才不卡
+  function sync(now) {
+    const s = t.posts[i];
+    const c = countChars(s);
+    count.textContent = `${c.toLocaleString()} / 5,000`;
+    bar.style.width = Math.min(100, (c / LIMIT) * 100) + "%";
+    el.classList.toggle("over", c > LIMIT);
+
+    dirty = true;
+    clearTimeout(renderTimer);
+    if (mode === "src") return;                 // 看不见就先不排
+    if (now) paint(); else renderTimer = setTimeout(paint, 130);
+  }
+
+  ta.addEventListener("input", () => {
+    t.posts[i] = ta.value;
+    sync();
+    snapshot(t);
+    refreshStats(t, stageEl.querySelector(".thread-stats"));
+    drawRail();
+  });
+
+  let mode = defaultMode;
+  function setMode(m, focus) {
+    mode = m;
+    el.classList.toggle("mode-src", m === "src");
+    el.classList.toggle("mode-split", m === "split");
+    ta.hidden = m === "view";
+    body.hidden = m === "src";
+    seg.select(m);
+    if (m !== "src" && dirty) paint();
+    if (m === "src") {           // 单独看源码时撑开到全文（5000 字符的帖子够用），超长才内部滚动
+      ta.style.height = "auto";
+      ta.style.height = Math.min(ta.scrollHeight + 20, 2400) + "px";
+    } else {
+      ta.style.height = "";
+    }
+    if (focus) ta.focus();
+  }
+
+  copyBtn.onclick = async () => {
+    try { await navigator.clipboard.writeText(t.posts[i]); toast(`已复制第 ${i + 1} 条 · ${countChars(t.posts[i])} 字符`); }
+    catch (e) { setMode("src"); ta.select(); toast("自动复制被拦，已选中，按 ⌘C"); }
+  };
+
+  function paintDone() {
+    const d = !!t.done[i];
+    el.classList.toggle("posted", d);
+    doneBtn.textContent = d ? "✓ 已发布" : "标记已发";
+    doneBtn.classList.toggle("ok", d);
+    doneBtn.setAttribute("aria-pressed", String(d));
+  }
+  doneBtn.onclick = () => {
+    t.done[i] = !t.done[i];
+    paintDone(); snapshot(t); drawRail();
+    refreshStats(t, stageEl.querySelector(".thread-stats"));
+  };
+
+  delBtn.onclick = () => {
+    if (countChars(t.posts[i]) && !confirm(`删除第 ${i + 1} 条？`)) return;
+    t.posts.splice(i, 1); t.done.splice(i, 1);
+    snapshot(t); drawRail(); drawThread();
+  };
+
+  el.append(head, panes);
+  sync(true); paintDone();
+  setMode(t.posts[i] ? defaultMode : "split");   // 空白帖直接进对照，粘上就看得见
+  return { el, setMode };
+}
+
+/* 渲染 / 源码 / 对照 —— 三档切换控件 */
+function segControl(current, onPick) {
+  const wrap = document.createElement("div");
+  wrap.className = "seg";
+  wrap.setAttribute("role", "group");
+  wrap.setAttribute("aria-label", "显示模式");
+  const btns = MODES.map(([m, label]) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.dataset.mode = m;
+    b.setAttribute("aria-pressed", String(m === current));
+    b.onclick = () => { wrap.select(m); onPick(m); };
+    wrap.append(b);
+    return b;
+  });
+  wrap.select = m => btns.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+  return wrap;
+}
+
+/* ── 主题 / 提示 ───────────────────────────────── */
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 1900);
+}
+
+document.getElementById("themeBtn").onclick = () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const dark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+};
+
+function paintBackend() {
+  document.querySelectorAll(".save-hint").forEach(el => {
+    const disk = backend === "disk";
+    el.textContent = !disk ? "改动只存在这个浏览器（没起 serve.py）"
+      : diskState === "error" ? "⚠ 存盘失败，看一眼 serve.py 的终端"
+      : diskState === "saving" ? "存盘中…"
+      : "改动已存进 06_网站/edits/，关掉也不用重贴";
+    el.style.color = (disk && diskState === "error") ? "var(--danger)" : "";
+  });
+}
+
+(async function init() {
+  await loadStore();
+  hydrate();
+  const pos = readPos();
+  if (pos && DATA.threads.some(t => t.id === pos.active)) active = pos.active;
+  drawRail();
+  drawThread();
+  if (pos && pos.review && pos.active === active) {
+    const d = stageEl.querySelector("details.panel");
+    if (d) d.open = true;
+  }
+  restorePos(pos);
+  try { await document.fonts.ready; } catch (e) {}   // 内联字体加载完行高会变，再对一次
+  restorePos(pos);
+  restoring = false;
+})();
+</script>
