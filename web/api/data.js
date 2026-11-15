@@ -15,6 +15,7 @@ module.exports = async (req, res) => {
     const me = who(req);
     res.status(200).json({ meta: STATIC.meta, threads, people: STATIC.people, me: me ? me.id : null, events: live.events });
   } catch (e) {
+    console.error("[%s] %s", req.url, e && e.stack || e);          // 进 Vercel 日志，查问题用
     res.status(502).json({ error: String(e.message || e) });
   }
 };

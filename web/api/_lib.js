@@ -70,7 +70,7 @@ async function readAll() {
 async function readOne(file) {
   const p = "/repos/" + OWNER + "/" + NAME + "/contents/" + file.split("/").map(encodeURIComponent).join("/") + "?ref=" + BRANCH;
   const { status, body } = await gh(p);
-  if (status !== 200) throw new Error("读文件失败：" + status);
+  if (status !== 200) throw ghError({ status, body }, "读文件");
   const text = Buffer.from(body.content, "base64").toString("utf8");
   return { text, sha: body.sha, posts: parsePosts(text) };
 }
@@ -125,4 +125,11 @@ function noteFile(author) {
   return { id: `${stamp}_${author}_${crypto.randomBytes(3).toString("hex")}`, time: now.toISOString().replace(/\.\d{3}Z$/, "+00:00") };
 }
 
-module.exports = { STATIC, guard, who, readAll, readOne, writeOne, parsePosts, buildFile, merge, noteFile, LIMIT };
+// GitHub 拒绝写入时，说人话
+function ghError(w, what) {
+  const why = { 401: "GitHub token 失效或过期，需要换一个", 403: "GitHub token 没有写权限：到 GitHub 把它的 Contents 权限改成 Read and write",
+                404: "GitHub 上找不到这个仓库或文件：token 可能没选这个仓库" }[w.status];
+  return new Error(why || `${what}失败：GitHub 返回 ${w.status} ${(w.body && w.body.message) || ""}`);
+}
+
+module.exports = { STATIC, guard, who, readAll, readOne, writeOne, parsePosts, buildFile, merge, noteFile, ghError, LIMIT };

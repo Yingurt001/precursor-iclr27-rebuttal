@@ -1,6 +1,6 @@
 // GET /api/notes：全部批注；POST /api/notes：新写一条（一条一个文件，几个人同时写也不会冲突）。
 // 文件格式与本地 06_网站/serve.py 写的一样。
-const { STATIC, guard, who, readAll, writeOne, noteFile } = require("./_lib.js");
+const { STATIC, guard, who, readAll, writeOne, noteFile, ghError } = require("./_lib.js");
 const TYPES = new Set(["note", "reply", "resolve", "reopen"]);
 
 module.exports = async (req, res) => {
@@ -25,9 +25,10 @@ module.exports = async (req, res) => {
       parent: String(d.parent || "").slice(0, 80),
     };
     const w = await writeOne(`${STATIC.notesDir}/${id}.json`, JSON.stringify(ev, null, 1), null, `notes: ${person.label} (${d.type})`, person);
-    if (w.status !== 201 && w.status !== 200) throw new Error("写批注失败：" + w.status + " " + (w.body.message || ""));
+    if (w.status !== 201 && w.status !== 200) throw ghError(w, "写批注");
     res.status(200).json({ ok: true, event: ev });
   } catch (e) {
+    console.error("[%s] %s", req.url, e && e.stack || e);          // 进 Vercel 日志，查问题用
     res.status(502).json({ error: String(e.message || e) });
   }
 };

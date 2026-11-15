@@ -1,6 +1,6 @@
 // POST /api/post {thread, base, posts}：把一份回复稿写回 GitHub。
 // 先读最新版，按条和别人的改动合并；GitHub 上的文件在这期间又变了（sha 对不上）就重来，最多三次。
-const { STATIC, guard, who, readOne, writeOne, buildFile, merge } = require("./_lib.js");
+const { STATIC, guard, who, readOne, writeOne, buildFile, merge, ghError } = require("./_lib.js");
 
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
@@ -26,10 +26,11 @@ module.exports = async (req, res) => {
         res.status(200).json({ posts: m.posts, merged: m.merged, conflicts: m.conflicts, sha: w.body.content && w.body.content.sha, wrote: true });
         return;
       }
-      if (w.status !== 409 && w.status !== 422) throw new Error("写 GitHub 失败：" + w.status + " " + (w.body.message || ""));
+      if (w.status !== 409 && w.status !== 422) throw ghError(w, "保存");
     }
     res.status(409).json({ error: "这份稿子刚被别人连续改了几次，刷新一下再改" });
   } catch (e) {
+    console.error("[%s] %s", req.url, e && e.stack || e);          // 进 Vercel 日志，查问题用
     res.status(502).json({ error: String(e.message || e) });
   }
 };
