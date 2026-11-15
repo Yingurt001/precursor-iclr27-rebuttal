@@ -13,7 +13,7 @@
 
 ---
 
-## 第 1/1 条 · 2857 字符
+## 第 1/1 条 · 2898 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
@@ -46,6 +46,6 @@ We have uploaded the revised manuscript, and the pdfdiff on OpenReview shows eve
 
 **New resource**
 
-- **DeviceWarning-162 in App. C.** We now describe a dataset of 162 events on 48 devices with 207 normal reference sequences, released as supplementary material (pSK8).
+- **DeviceWarning-162 in App. C.** We now describe a dataset of 162 events on 48 devices with 207 normal reference sequences, released as supplementary material, and report RQ1 to RQ3 on it in App. C.5 (pSK8).
 
 ▲▲▲ COPY TO HERE ▲▲▲

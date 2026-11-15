@@ -13,7 +13,7 @@
 
 ---
 
-## 第 1/6 条 · 4050 字符
+## 第 1/6 条 · 4103 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
@@ -24,7 +24,7 @@ We thank Reviewer $\color{green}{\text{pSK8}}$ for finding the problem very inte
 # 1. Validation of the precursor detectability test
 We thank the reviewer for this concern, which helped us explain the technical choices more completely. The revision states the reasoning behind the test step by step and adds a new experiment that checks whether the deviations it detects are useful for recognizing a coming fault.
 
-The reasoning has four steps. First, §3.2 defines the test statistic $T$, and App. A.2 and App. B.1.3 explain why we built a dedicated test instead of an existing change-point or self-supervised detector (answer 6). Second, 3W is the one public dataset with independently annotated transitions before each fault, and the test detects 43 of its 47 transitions (§4.1). Third, a counterfactual ablation, described below, checks that the detected deviations carry information about the coming fault. Fourth, on the five public benchmarks, several of which were built for anomaly detection and adapted to prediction by shifting labels, the test finds deviations before onset in only 70 of 500 events. Because real multivariate event datasets for early warning are scarce, the revision also releases DeviceWarning-162, 162 events on 48 devices with 207 normal reference sequences, as supplementary material with its description in App. C. It does not change the results of the submission.
+The reasoning has four steps. First, §3.2 defines the test statistic $T$, and App. A.2 and App. B.1.3 explain why we built a dedicated test instead of an existing change-point or self-supervised detector (answer 6). Second, 3W is the one public dataset with independently annotated transitions before each fault, and the test detects 43 of its 47 transitions (§4.1). Third, a counterfactual ablation, described below, checks that the detected deviations carry information about the coming fault. Fourth, on the five public benchmarks, several of which were built for anomaly detection and adapted to prediction by shifting labels, the test finds deviations before onset in only 70 of 500 events. Because real multivariate event datasets for early warning are scarce, the revision also releases DeviceWarning-162, 162 events on 48 devices with 207 normal reference sequences, as supplementary material, described in App. C, where App. C.5 applies the test and the seven detectors to it. It does not change the results of the submission.
 
 **1. Experiment.** For each of the 47 3W records, we replaced the mean level and the linear trend of the series before the fault by those of normal operation of the same well, which weakens the detected deviation and keeps the other fluctuations. Positives are the last 100 samples before the stable fault of each record, and negatives are 8 normal windows of the same length from the same record, 47 positives and 376 negatives in total. All metrics are computed at the window level without point adjustment, for common anomaly detection, anomaly prediction and supervised classification models.
 
