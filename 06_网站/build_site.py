@@ -145,7 +145,7 @@ def attach_questions(threads):
         sections = mapping.get(t["id"])
         if not sections:
             continue
-        paras = [x.strip() for x in re.split(split, blocks.get(t["id"], "")) if x.strip()]
+        paras = [x.strip() for x in re.split(split, blocks.get(t.get("reviewer") or t["id"], "")) if x.strip()]
         out, missing = {}, []
         for sec, items in sections.items():
             for it in items:
@@ -173,6 +173,7 @@ def main():
         ("Tery", "审稿人回复", "Tery", "回复 Reviewer Tery", "Tery", "1_R1_Tery.md"),
         ("wxGK", "审稿人回复", "wxGK", "回复 Reviewer wxGK", "wxGK", "2_R2_wxGK.md"),
         ("pSK8", "审稿人回复", "pSK8", "回复 Reviewer pSK8", "pSK8", "3_R3_pSK8.md"),
+        ("pSK8zh", "审稿人回复", "pSK8 中文稿", "回复 Reviewer pSK8 · 学姐中文稿（对照用）", "pSK8", "3b_R3_pSK8_学姐中文稿.md"),
         ("revisions", "修订稿", "Summary", "Summary of Revisions in the Updated Manuscript", "", "4_Summary_of_Revisions.md"),
     ]
 
@@ -184,7 +185,7 @@ def main():
         print(f"  {fname:28s} {len(posts):2d} 条 · 最长 {max(map(len, posts), default=0):5d} 字符"
               + (f" ⚠️ 超限: {over}" if over else ""))
         threads.append({
-            "id": tid, "group": group, "short": short, "title": title,
+            "id": tid, "group": group, "short": short, "title": title, "reviewer": note_key or None,
             "rating": note.get("rating"), "noteId": note.get("noteId"),
             "review": {"fields": note.get("fields", {}), "blocks": note.get("blocks", [])} if note else None,
             "posts": posts, "origin": posts,

@@ -677,7 +677,7 @@ function drawThread() {
     const d = document.createElement("details");
     d.className = "panel";
     const sum = document.createElement("summary");
-    sum.textContent = t.id === "ac" ? "AC meta-review 原文" : `Reviewer ${t.short} 审稿意见原文`;
+    sum.textContent = t.id === "ac" ? "AC meta-review 原文" : `Reviewer ${t.reviewer || t.short} 审稿意见原文`;
     const body = document.createElement("div");
     body.className = "panel-body";
 
@@ -1071,7 +1071,7 @@ const shortLabel = x => x.replace(/^Weakness\s*/i, "W");
 function sectionAside(t, qs) {
   const a = document.createElement("aside"); a.className = "sec-aside";
   if (qs) {
-    a.append(Object.assign(document.createElement("div"), { className: "qa-tag", textContent: `审稿人 ${t.short} · ${qs.map(q => shortLabel(q.label)).join(" / ")}` }));
+    a.append(Object.assign(document.createElement("div"), { className: "qa-tag", textContent: `审稿人 ${t.reviewer || t.short} · ${qs.map(q => shortLabel(q.label)).join(" / ")}` }));
     qs.forEach(q => {
       const box = document.createElement("div"); box.className = "qa-item";
       const en = document.createElement("div"); en.className = "md en"; en.innerHTML = renderMarkdown(q.text);
