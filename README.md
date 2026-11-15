@@ -60,8 +60,8 @@ git push                          # then open a pull request
 
 ![The workbench](docs/workbench.jpg)
 
-The workbench shows each post exactly as it will appear on OpenReview.
-Everything else sits in the right margin: the reviewer's own words beside each answer, in English with a Chinese translation, and the authors' annotations.
+The workbench renders each post as it will appear on OpenReview.
+Each numbered section sits beside a panel with the reviewer's own words, in English with a Chinese translation, and the authors' annotations on that section.
 To annotate, select a passage and press *批注*. The passage is highlighted in the author's colour, and the note records who wrote it and when.
 Notes can be answered and resolved. Each one is a separate file under `06_网站/批注/`, so concurrent notes never conflict, and *同步批注* commits, pulls and pushes them.
 The author is inferred from `git config user.name` through `06_网站/people.json`.
