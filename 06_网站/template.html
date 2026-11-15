@@ -331,16 +331,14 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line-soft); }
 /* 线程级：一次切换本线程全部帖子 */
 .thread-bar { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); }
 .thread-bar .spacer { flex: 1; }
-/* ── 每节回答旁边：这一节对应的审稿人原话（中英）+ 批注 ── */
-.wrap.has-side { max-width: 1320px; }
-.post { overflow: clip; }                 /* clip 不建滚动容器，右栏的 sticky 才能跟着页面停住 */
-.sec { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; align-items: start; margin: 4px 0 10px; }
-.sec.bare { display: block; }
-.sec.bare > .sec-aside { display: none; }
-.sec-main { min-width: 0; }
+/* ── 右侧面板：固定在屏幕右边、卡片外面。正文读到哪一节，就显示哪一节的审稿人原话（中英）、逐节评审和批注。
+      它不插进回复正文，所以回复的宽度和排版与没有面板时完全一样 ── */
+.stage.with-panel { padding-right: 424px; }   /* 面板宽 370 + 间隔 24 + 原有 30 */
+.sec-panel { position: fixed; top: 64px; width: 370px; max-height: calc(100vh - 86px); overflow-y: auto; z-index: 5; }
+.sec-panel[hidden] { display: none; }
+@media (max-width: 1280px) { .stage.with-panel { padding-right: 30px; } .sec-panel { display: none; } }
 .sec-aside {
-  position: sticky; top: 64px; max-height: calc(100vh - 76px); overflow-y: auto;
-  margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--surface-2); font-size: 12.5px; line-height: 1.55; display: flex; flex-direction: column; gap: 10px;
 }
 .sec-aside .qa-tag { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; color: var(--muted); }   /* 不转大写：审稿人 ID 区分大小写 */
@@ -362,12 +360,6 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .recover { position: sticky; top: 56px; z-index: 30; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px;
   border: 1px solid var(--line); border-left: 3px solid var(--reject); border-radius: var(--radius); background: var(--surface); font-size: 13.5px; }
 .sec-notes:empty { display: none; }
-/* 按正文栏自己的宽度决定排法：够宽就左右两栏，不够（窄窗口、「对照」模式只占半屏）就把右栏放到这一节上方 */
-.post-body { container-type: inline-size; }
-@container (max-width: 880px) {
-  .sec { display: flex; flex-direction: column; gap: 8px; }
-  .sec-aside { order: -1; position: static; max-height: none; }
-}
 .notes-ctl { display: inline-flex; align-items: center; gap: 8px; }
 .notes-ctl select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 2px 6px; }
 .who-0 { --c: var(--p0); } .who-1 { --c: var(--p1); } .who-2 { --c: var(--p2); }
@@ -734,7 +726,7 @@ function drawRail() {
 function drawThread() {
   const t = DATA.threads.find(x => x.id === active);
   stageEl.replaceChildren();
-  stageEl.classList.toggle("has-side", !!(t.questions || NOTES.on));
+  stageEl.parentElement.classList.toggle("with-panel", !!(t.questions || t.sectionNotes || NOTES.on) && showQ);
 
   // 标题
   const head = document.createElement("div");
@@ -908,10 +900,8 @@ function postCard(t, i) {
 
   function paint() {
     body.innerHTML = renderMarkdown(t.posts[i]);
-    decorateSections(t, body);
-    fillAsides(body, t);
     dirty = false;
-    if (body.isConnected) applyHighlights(t);
+    if (body.isConnected) scheduleSide();
   }
 
   // 计数立刻更新；重排版稍等一拍，长帖子打字才不卡
@@ -1174,25 +1164,6 @@ function sectionAside(t, qs, sn) {
   a.append(Object.assign(document.createElement("div"), { className: "sec-notes" }));
   return a;
 }
-function decorateSections(t, body) {
-  const frag = document.createDocumentFragment();
-  let main = null;
-  const open = h => {
-    const m = h && (h.textContent || "").trim().match(/^(\d+)\./);
-    const qs = showQ && m && t.questions ? t.questions[m[1]] : null;
-    const sn = showQ && m && t.sectionNotes ? t.sectionNotes[m[1]] : null;
-    const sec = document.createElement("div"); sec.className = "sec"; sec.dataset.q = qs || sn ? "1" : "";
-    main = document.createElement("div"); main.className = "sec-main";
-    sec.append(main, sectionAside(t, qs, sn));
-    frag.append(sec);
-  };
-  Array.from(body.childNodes).forEach(n => {
-    if (n.nodeType === 1 && n.tagName === "H1") open(n);
-    else if (!main) open(null);
-    main.append(n);
-  });
-  body.replaceChildren(frag);
-}
 let PENDING = null;                   // 选中文字、还没发表的批注 {key, quote}
 function pendingCard(t) {
   const box = document.createElement("div"); box.className = "note-panel pending";
@@ -1207,37 +1178,84 @@ function pendingCard(t) {
   box.append(cancel);
   return box;
 }
-function fillAsides(body, t) {
-  const roots = NOTES.on ? threadNotes(t.id) : [];
-  body.querySelectorAll(":scope > .sec").forEach(sec => {
-    const main = sec.querySelector(":scope > .sec-main"), box = sec.querySelector(".sec-notes");
-    box.replaceChildren();
-    const blocks = Array.from(main.querySelectorAll(PIN_BLOCKS));
-    const order = new Map(blocks.map((b, i) => [noteKey(b), i]));
-    const mine = roots.filter(n => order.has(n.key)).sort((x, y) => order.get(x.key) - order.get(y.key));
-    const sid = blocks.length ? noteKey(blocks[0]) : "";
-    const showAll = OPEN_SECS.has(sid);
-    const shown = mine.filter(n => showAll || !n.resolved);
-    const pending = PENDING && order.has(PENDING.key);
-    if (shown.length || pending) box.append(Object.assign(document.createElement("div"), { className: "qa-tag", textContent: "批注" }));
-    shown.forEach(n => { const c = document.createElement("div"); c.className = "note-panel"; c.append(noteItem(t, n, layoutSide)); box.append(c); });
-    if (pending) box.append(pendingCard(t));
-    const resolved = mine.filter(n => n.resolved).length;
-    if (resolved) {
-      const b = Object.assign(document.createElement("button"), { type: "button", className: "linkish",
-        textContent: (showAll ? "收起" : "显示") + `已解决的批注（${resolved}）` });
-      b.onclick = () => { if (showAll) OPEN_SECS.delete(sid); else OPEN_SECS.add(sid); layoutSide(); };
-      box.append(b);
-    }
-    sec.classList.toggle("bare", !sec.dataset.q && !box.childElementCount);
+/* 每个正文块属于哪一节：按页面顺序，最近的一个「# 标题」决定。续帖开头没有标题，沿用上一节 */
+let SECMAP = [];
+function buildSecMap() {
+  SECMAP = []; let sec = "intro", xi = 0;
+  stageEl.querySelectorAll(".post-body").forEach(body => {
+    if (body.hidden) return;
+    body.querySelectorAll(PIN_BLOCKS).forEach(blk => {
+      if (blk.tagName === "H1") { const m = (blk.textContent || "").trim().match(/^(\d+)\./); sec = m ? m[1] : "x" + (++xi); }
+      SECMAP.push({ blk, sec, key: noteKey(blk) });
+    });
   });
+}
+function currentSec() {
+  if (PENDING) { const hit = SECMAP.find(x => x.key === PENDING.key); if (hit) return hit.sec; }   // 正在写批注：停在那一节
+  let s = SECMAP.length ? SECMAP[0].sec : null;
+  for (const x of SECMAP) { if (x.blk.getBoundingClientRect().top <= 160) s = x.sec; else break; }
+  return s;
+}
+function buildPanel(t, s) {
+  const num = /^\d+$/.test(s || "");
+  const qs = showQ && num && t.questions ? t.questions[s] : null;
+  const sn = showQ && num && t.sectionNotes ? t.sectionNotes[s] : null;
+  const aside = sectionAside(t, qs, sn), box = aside.querySelector(".sec-notes");
+  const roots = NOTES.on ? threadNotes(t.id) : [];
+  const blocks = SECMAP.filter(x => x.sec === s);
+  const order = new Map(blocks.map((x, i) => [x.key, i]));
+  const mine = roots.filter(n => order.has(n.key)).sort((x, y) => order.get(x.key) - order.get(y.key));
+  const sid = t.id + ":" + s, showAll = OPEN_SECS.has(sid);
+  const shown = mine.filter(n => showAll || !n.resolved);
+  const pending = PENDING && order.has(PENDING.key);
+  if (shown.length || pending) box.append(Object.assign(document.createElement("div"), { className: "qa-tag", textContent: "批注" }));
+  shown.forEach(n => { const c = document.createElement("div"); c.className = "note-panel"; c.append(noteItem(t, n, layoutSide)); box.append(c); });
+  if (pending) box.append(pendingCard(t));
+  const resolved = mine.filter(n => n.resolved).length;
+  if (resolved) {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "linkish",
+      textContent: (showAll ? "收起" : "显示") + `已解决的批注（${resolved}）` });
+    b.onclick = () => { if (showAll) OPEN_SECS.delete(sid); else OPEN_SECS.add(sid); layoutSide(); };
+    box.append(b);
+  }
+  return qs || sn || box.childElementCount ? aside : null;
+}
+const secPanel = document.createElement("div");
+secPanel.className = "sec-panel";
+secPanel.hidden = true;
+document.body.append(secPanel);
+let panelKey = null;
+function updatePanel(force) {
+  const t = DATA.threads.find(x => x.id === active);
+  if (!t) { secPanel.hidden = true; return; }
+  const typing = secPanel.contains(document.activeElement) && document.activeElement.tagName === "TEXTAREA";
+  if (!force && typing) return;                                  // 正在面板里打字：滚动时不换节
+  const s = currentSec(), key = t.id + ":" + s;
+  if (force || key !== panelKey) {
+    panelKey = key;
+    let content = s == null ? null : buildPanel(t, s);
+    if (!content && s === "intro") {                             // 还没读到第一节：先显示第一节
+      const first = SECMAP.find(x => /^\d+$/.test(x.sec));
+      if (first) content = buildPanel(t, first.sec);
+    }
+    if (content) { secPanel.replaceChildren(content); if (!force) secPanel.scrollTop = 0; }
+    else secPanel.replaceChildren();
+  }
+  secPanel.hidden = !secPanel.firstChild;
+  placePanel();
+}
+function placePanel() {   // 面板贴在正文右边 24px
+  secPanel.style.left = Math.round(stageEl.getBoundingClientRect().right + 24) + "px";
 }
 function layoutSide() {
   const t = DATA.threads.find(x => x.id === active);
   if (!t) return;
-  stageEl.querySelectorAll(".post-body").forEach(body => fillAsides(body, t));
+  buildSecMap();
+  updatePanel(true);
   applyHighlights(t);
 }
+window.addEventListener("resize", () => { if (!secPanel.hidden) placePanel(); });
+window.addEventListener("scroll", () => updatePanel(false), { passive: true });   // 只比较几个块的位置，直接算
 
 /* 被批注的文字：用浏览器的高亮层画底色，不改正文 DOM，排版和最终渲染一致 */
 function findRange(blk, quote) {
@@ -1264,10 +1282,10 @@ function applyHighlights(t) {
   const roots = t && NOTES.on ? threadNotes(t.id).filter(n => !n.resolved && n.quote) : [];
   if (roots.length) stageEl.querySelectorAll(".post-body").forEach(body => {
     if (body.hidden) return;
-    body.querySelectorAll(".sec-main").forEach(main => main.querySelectorAll(PIN_BLOCKS).forEach(blk => {
+    body.querySelectorAll(PIN_BLOCKS).forEach(blk => {
       const key = noteKey(blk);
       roots.filter(n => n.key === key).forEach(n => { const r = findRange(blk, n.quote); if (r) hs[personIdx(n.author)].add(r); });
-    }));
+    });
   });
   hs.forEach((h, k) => CSS.highlights.set("note-" + k, h));
 }
@@ -1279,8 +1297,8 @@ document.body.append(selBtn);
 selBtn.addEventListener("mousedown", e => e.preventDefault());   // 点按钮时别把选区弄丢
 function blockOf(node) {
   let el = node && (node.nodeType === 1 ? node : node.parentElement);
-  while (el && el.parentElement && !el.parentElement.classList.contains("sec-main")) el = el.parentElement;
-  return el && el.parentElement && el.parentElement.classList.contains("sec-main") && el.matches(BLOCK_SEL) ? el : null;
+  while (el && el.parentElement && !el.parentElement.classList.contains("post-body")) el = el.parentElement;
+  return el && el.parentElement && el.parentElement.classList.contains("post-body") && el.matches(BLOCK_SEL) ? el : null;
 }
 function onSelection() {
   const sel = window.getSelection();
@@ -1294,7 +1312,7 @@ function onSelection() {
   selBtn.onclick = () => {
     PENDING = { key: noteKey(blk), quote: text.slice(0, 300) };
     selBtn.hidden = true; sel.removeAllRanges(); layoutSide();
-    const ta = stageEl.querySelector(".pending textarea"); if (ta) ta.focus();
+    const ta = secPanel.querySelector(".pending textarea"); if (ta) ta.focus();
   };
 }
 document.addEventListener("mouseup", e => { if (e.target !== selBtn) setTimeout(onSelection, 0); });
