@@ -350,6 +350,14 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .sec-aside .qa-item .md p { margin: 0 0 4px; }
 .sec-aside .qa-item .md.zh { color: var(--ink-2); }
 .sec-notes { display: flex; flex-direction: column; gap: 8px; }
+.sec-aside .verdict { align-self: flex-start; padding: 2px 9px; border-radius: 999px; font-weight: 600; font-size: 12px; }
+.sec-aside .verdict.v-ok   { background: var(--accept-bg); color: var(--accept); }
+.sec-aside .verdict.v-part { background: var(--reject-bg); color: var(--reject); }
+.sec-aside .verdict.v-miss { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+.sec-aside .rv-text { color: var(--ink); }
+.sec-aside .gap-title { font-weight: 600; color: var(--ink); }
+.sec-aside .gaps { margin: 0; padding-left: 18px; color: var(--ink-2); }
+.sec-aside .gaps li { margin: 2px 0; }
 .cite-tex { font-family: var(--mono); font-size: .86em; color: var(--ikb); background: var(--ikb-soft); border-radius: 3px; padding: 0 3px; white-space: nowrap; }
 .recover { position: sticky; top: 56px; z-index: 30; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px;
   border: 1px solid var(--line); border-left: 3px solid var(--reject); border-radius: var(--radius); background: var(--surface); font-size: 13.5px; }
@@ -797,7 +805,7 @@ function drawThread() {
   bar.append(barLabel, barSeg, Object.assign(document.createElement("span"), { className: "spacer" }), hint);
   if (NOTES.on) bar.append(notesControls());
   if (t.questions) {
-    const qb = Object.assign(document.createElement("button"), { type: "button", className: "tool", textContent: showQ ? "隐藏审稿人原话" : "显示审稿人原话" });
+    const qb = Object.assign(document.createElement("button"), { type: "button", className: "tool", textContent: showQ ? "隐藏右栏" : "显示右栏" });
     qb.onclick = () => { showQ = !showQ; try { localStorage.setItem(Q_KEY, showQ ? "1" : "0"); } catch (e) {} drawThread(); };
     bar.append(qb);
   }
@@ -1141,7 +1149,8 @@ function noteItem(t, n, rerender) {
 /* 正文按「# 标题」切成一节一节：左边是回答，右边是这一节对应的审稿人原话（中英）和批注。
    开头致谢、References 也各算一节；右栏没东西的节占满整行。 */
 const shortLabel = x => x.replace(/^Weakness\s*/i, "W");
-function sectionAside(t, qs) {
+const VERDICT_CLASS = { "答到": "v-ok", "部分": "v-part", "没答到": "v-miss" };
+function sectionAside(t, qs, sn) {
   const a = document.createElement("aside"); a.className = "sec-aside";
   if (qs) {
     a.append(Object.assign(document.createElement("div"), { className: "qa-tag", textContent: `审稿人 ${t.reviewer || t.short} · ${qs.map(q => shortLabel(q.label)).join(" / ")}` }));
@@ -1153,6 +1162,15 @@ function sectionAside(t, qs) {
       a.append(box);
     });
   }
+  if (sn && sn.verdict) {                                      // 逐节评审：这一节答到没有、还差什么
+    a.append(Object.assign(document.createElement("span"), { className: "verdict " + (VERDICT_CLASS[sn.verdict] || "v-part"), textContent: "判断：" + sn.verdict }));
+    if (sn.review) a.append(Object.assign(document.createElement("div"), { className: "rv-text", textContent: sn.review }));
+    if (sn.missing && sn.missing.length) {
+      const ul = document.createElement("ul"); ul.className = "gaps";
+      sn.missing.forEach(x => ul.append(Object.assign(document.createElement("li"), { textContent: x })));
+      a.append(Object.assign(document.createElement("div"), { className: "gap-title", textContent: "还差什么" }), ul);
+    }
+  }
   a.append(Object.assign(document.createElement("div"), { className: "sec-notes" }));
   return a;
 }
@@ -1162,9 +1180,10 @@ function decorateSections(t, body) {
   const open = h => {
     const m = h && (h.textContent || "").trim().match(/^(\d+)\./);
     const qs = showQ && m && t.questions ? t.questions[m[1]] : null;
-    const sec = document.createElement("div"); sec.className = "sec"; sec.dataset.q = qs ? "1" : "";
+    const sn = showQ && m && t.sectionNotes ? t.sectionNotes[m[1]] : null;
+    const sec = document.createElement("div"); sec.className = "sec"; sec.dataset.q = qs || sn ? "1" : "";
     main = document.createElement("div"); main.className = "sec-main";
-    sec.append(main, sectionAside(t, qs));
+    sec.append(main, sectionAside(t, qs, sn));
     frag.append(sec);
   };
   Array.from(body.childNodes).forEach(n => {

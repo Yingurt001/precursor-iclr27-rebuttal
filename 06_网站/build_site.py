@@ -132,6 +132,31 @@ def reconcile_store(threads):
           f"（旧快照存到 edits/.stale/）")
 
 
+def attach_section_notes(threads):
+    """../逐节评审.md：`## <线程> §<节号>` 下有 判断 / 评审 / 还差 三个字段，显示在工作台右栏审稿人原话下面。"""
+    path = HERE.parent / "逐节评审.md"
+    if not path.exists():
+        return
+    text = path.read_text(encoding="utf-8")
+    notes = {}
+    for m in re.finditer(r"^## (\S+) §(\d+)\n(.*?)(?=^## |\Z)", text, re.M | re.S):
+        who, sec, body = m.group(1), m.group(2), m.group(3)
+        field = lambda k: (re.search(rf"^{k}[:：]\s*(.*)$", body, re.M) or [None, ""])[1].strip()
+        block = re.search(r"^还差[:：]\s*(.*?)(?=^\S+[:：]|\Z)", body, re.M | re.S)
+        missing = [l[2:].strip() for l in (block.group(1).splitlines() if block else []) if l.startswith("- ") and l[2:].strip() != "无"]
+        notes.setdefault(who, {})[sec] = {"verdict": field("判断"), "review": field("评审"), "missing": missing}
+    for t in threads:
+        mine = notes.get(t["id"])
+        if not mine:
+            continue
+        t["sectionNotes"] = mine
+        heads = {re.match(r"(\d+)\.", h).group(1) for p in t["posts"] for h in re.findall(r"^# (\d+\.)", p, re.M)}
+        lost = sorted(set(mine) - heads, key=int)
+        bad = [f"§{k}" for k, v in mine.items() if v["verdict"] not in ("答到", "部分", "没答到")]
+        print(f"  逐节评审 {t['id']:6s} {len(mine)} 节" + (f"  ⚠️ 回复里找不到 §{lost}" if lost else "")
+              + (f"  ⚠️ 判断不是 答到/部分/没答到：{bad}" if bad else ""))
+
+
 def attach_questions(threads):
     """questions.json 只存定位片段；原文从 REVIEWS.md 逐字取出，挂到每条线程的 questions 上。"""
     qpath = HERE / "questions.json"
@@ -200,6 +225,7 @@ def main():
 
     reconcile_store(threads)
     attach_questions(threads)
+    attach_section_notes(threads)
 
     data = json.dumps({"threads": threads}, ensure_ascii=False)
     base = (HERE / "template.html").read_text(encoding="utf-8")
