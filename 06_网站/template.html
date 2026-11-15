@@ -350,6 +350,9 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .sec-aside .qa-item .md p { margin: 0 0 4px; }
 .sec-aside .qa-item .md.zh { color: var(--ink-2); }
 .sec-notes { display: flex; flex-direction: column; gap: 8px; }
+.cite-tex { font-family: var(--mono); font-size: .86em; color: var(--ikb); background: var(--ikb-soft); border-radius: 3px; padding: 0 3px; white-space: nowrap; }
+.recover { position: sticky; top: 56px; z-index: 30; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px;
+  border: 1px solid var(--line); border-left: 3px solid var(--reject); border-radius: var(--radius); background: var(--surface); font-size: 13.5px; }
 .sec-notes:empty { display: none; }
 /* 按正文栏自己的宽度决定排法：够宽就左右两栏，不够（窄窗口、「对照」模式只占半屏）就把右栏放到这一节上方 */
 .post-body { container-type: inline-size; }
@@ -527,17 +530,33 @@ function persist() {
 let defaultMode = "view";       // 上次选的显示模式，loadStore 之后再定
 const setDefaultMode = m => { defaultMode = saved.__mode = m; persist(); };
 
+const sameList = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+const RECOVER = [], LEGACY = [];
 function hydrate() {
   if (MODES.some(m => m[0] === saved.__mode)) defaultMode = saved.__mode;
   DATA.threads.forEach(t => {
     const s = saved[t.id];
     t.posts = (!WEB && s && Array.isArray(s.posts)) ? s.posts.slice() : t.origin ? t.origin.slice() : t.posts.slice();
-    if (WEB && t.origin) t.base = t.posts.slice();             // 上次和 GitHub 对齐时的版本，合并用
+    if (WEB && t.origin) {
+      t.base = t.posts.slice();                                // 上次和 GitHub 对齐时的版本，合并用
+      if (s && s.unsynced && Array.isArray(s.posts) && Array.isArray(s.base)) {
+        t.posts = s.posts.slice(); t.base = s.base.slice();    // 上次没存上：拿着当时的底稿重新合并，别人的新改动不会被盖掉
+        RECOVER.push(t);
+      } else if (s && !("base" in s) && Array.isArray(s.posts) && !sameList(s.posts, t.origin)) {
+        LEGACY.push({ t, posts: s.posts.slice() });            // 早期版本存下的、没记底稿的改动：让用户自己决定要不要
+      }
+    }
     t.done  = (s && Array.isArray(s.done))  ? s.done.slice()  : t.posts.map(() => false);
     while (t.done.length < t.posts.length) t.done.push(false);
   });
 }
-const snapshot = t => { saved[t.id] = { posts: t.posts, done: t.done }; persist(); if (WEB) webSave(t); };
+const snapshot = t => {
+  saved[t.id] = WEB && t.base ? { posts: t.posts, done: t.done, base: t.base, unsynced: !sameList(t.posts, t.base) } : { posts: t.posts, done: t.done };
+  persist();
+  if (WEB) webSave(t);
+};
+const unsyncedThreads = () => DATA.threads.filter(t => WEB && t.base && !sameList(t.posts, t.base));
+window.addEventListener("beforeunload", e => { if (unsyncedThreads().length) { e.preventDefault(); e.returnValue = ""; } });
 
 /* 网页版：停手 1.5 秒后把这份稿子存回 GitHub。服务端按条合并别人同时的改动，合并进来的条目这里也补上。 */
 const webTimers = {};
@@ -548,12 +567,13 @@ function webSave(t) {
   diskState = "saving"; paintBackend();
   webTimers[t.id] = setTimeout(async () => {
     const sent = t.posts.slice();
-    if (sent.length === t.base.length && sent.every((x, i) => x === t.base[i])) { diskState = "saved"; paintBackend(); return; }
+    if (sameList(sent, t.base)) { diskState = "saved"; paintBackend(); return; }
+    const retry = () => { clearTimeout(webTimers[t.id]); webTimers[t.id] = setTimeout(() => webSave(t), 20000); };   // 20 秒后自动再试
     try {
       const r = await fetch("api/post", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ thread: t.id, base: t.base, posts: sent }) });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) { diskState = "error"; webNote = d.error || String(r.status); paintBackend(); toast("没存上：" + webNote); return; }
+      if (!r.ok) { diskState = "error"; webNote = d.error || String(r.status); paintBackend(); toast("没存上：" + webNote); retry(); return; }
       t.base = d.posts.slice();
       const untouched = t.posts.length === sent.length && t.posts.every((x, i) => x === sent[i]);
       let changed = false;
@@ -572,8 +592,10 @@ function webSave(t) {
       }
       if (d.conflicts.length) toast(d.conflicts[0] === "all" ? "你和别人同时增删了帖子，存的是你的版本，对方那版在 GitHub 历史里"
         : "第 " + d.conflicts.map(i => i + 1).join("、") + " 条你和别人同时改了，存的是你的版本，对方那版在 GitHub 历史里");
+      saved[t.id] = { posts: t.posts, done: t.done, base: t.base, unsynced: !sameList(t.posts, t.base) }; persist();
       diskState = "saved"; webNote = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }); paintBackend();
-    } catch (e) { diskState = "error"; webNote = "网络"; paintBackend(); }
+      if (!sameList(t.posts, t.base)) webSave(t);              // 存的时候又打了字，接着存
+    } catch (e) { diskState = "error"; webNote = "连不上服务器"; paintBackend(); retry(); }
   }, 1500);
 }
 
@@ -590,6 +612,8 @@ function renderMarkdown(src) {
 
   s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => stash(tex, true));
   s = s.replace(/(^|[^\\$])\$(?!\s*\$)([^\n$]+?)\$/g, (_, pre, tex) => pre + stash(tex, false));
+  const cites = [];
+  s = s.replace(/\\cite[pt]?\{([^}]*)\}/g, (_, k) => "%%CT" + (cites.push(k) - 1) + "CT%%");
   s = s.replace(/%%CD(\d+)CD%%/g, (_, i) => code[+i]);
 
   let html = marked.parse(s, { gfm: true, breaks: false, mangle: false, headerIds: false });
@@ -606,6 +630,8 @@ function renderMarkdown(src) {
     }
   });
 
+  html = html.replace(/%%CT(\d+)CT%%/g, (_, i) => '<span class="cite-tex" title="LaTeX 引用：OpenReview 不会渲染，发之前换成文献">[' +
+    cites[+i].split(",").map(x => x.trim()).join("; ").replace(/</g, "&lt;") + "]</span>");
   html = html
     .replace(/<pre>/g, '<pre translate="no" class="notranslate">')
     .replace(/<code>/g, '<code translate="no" class="notranslate">');
@@ -989,7 +1015,7 @@ document.getElementById("themeBtn").onclick = () => {
 function paintBackend() {
   document.querySelectorAll(".save-hint").forEach(el => {
     if (backend === "web") {
-      el.textContent = diskState === "saving" ? "保存中…" : diskState === "error" ? `⚠ 没存上（${webNote}），再改一下会重试`
+      el.textContent = diskState === "saving" ? "保存中…" : diskState === "error" ? `⚠ 没存上：${webNote}。改动留在这个浏览器里，20 秒后自动再试`
         : diskState === "saved" ? `已存到 GitHub · ${webNote}` : "改动停手 1.5 秒后自动存到 GitHub";
       el.style.color = diskState === "error" ? "var(--danger)" : "";
       return;
@@ -1290,6 +1316,32 @@ function notesControls() {
 }
 
 
+/* 早期网页版在保存失败时只把改动留在浏览器里、没记底稿。打开页面时列出来，让用户决定恢复还是丢掉。 */
+const LEGACY_FIX = x => x.replace(/(。)\n(?=[^\n\-|#>\d])/g, "$1\n\n");   // 恢复时补上 11-15 修过的中文分段（只认中文句号，英文稿不受影响）
+function showLegacy() {
+  const bar = document.createElement("div"); bar.className = "recover"; bar.setAttribute("role", "alert");
+  const what = LEGACY.map(({ t, posts }) => {
+    const idx = posts.length === t.posts.length ? posts.map((x, i) => (x !== t.posts[i] ? i + 1 : 0)).filter(Boolean) : null;
+    return `${t.short}` + (idx ? ` 第 ${idx.join("、")} 条` : "（条数也变了）");
+  }).join("；");
+  bar.append(Object.assign(document.createElement("span"), { textContent: `这个浏览器里还有上次没存上的改动：${what}。` }));
+  const ok = Object.assign(document.createElement("button"), { type: "button", className: "tool", textContent: "恢复并保存" });
+  const no = Object.assign(document.createElement("button"), { type: "button", className: "tool", textContent: "不要了" });
+  ok.onclick = () => {
+    LEGACY.forEach(({ t, posts }) => {
+      const fix = LEGACY_FIX;
+      if (posts.length === t.posts.length) posts.forEach((x, i) => { if (x !== t.posts[i]) t.posts[i] = fix(x); });
+      else t.posts = posts.map(fix);
+      while (t.done.length < t.posts.length) t.done.push(false);
+      snapshot(t);
+    });
+    LEGACY.length = 0; bar.remove(); drawRail(); drawThread(); toast("已恢复，正在存到 GitHub");
+  };
+  no.onclick = () => { LEGACY.forEach(({ t }) => { delete saved[t.id].posts; saved[t.id].base = t.base; saved[t.id].unsynced = false; }); persist(); LEGACY.length = 0; bar.remove(); };
+  bar.append(ok, no);
+  document.querySelector(".stage").prepend(bar);
+}
+
 (async function init() {
   await loadStore();
   hydrate();
@@ -1304,6 +1356,8 @@ function notesControls() {
     if (d) d.open = true;
   }
   restorePos(pos);
+  if (RECOVER.length) { RECOVER.forEach(t => webSave(t)); toast("找回了上次没存上的改动，正在补存"); }
+  if (LEGACY.length) showLegacy();
   try { await document.fonts.ready; } catch (e) {}   // 内联字体加载完行高会变，再对一次
   restorePos(pos);
   layoutSide();
