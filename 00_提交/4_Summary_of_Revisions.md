@@ -13,7 +13,7 @@
 
 ---
 
-## 第 1/1 条 · 2627 字符
+## 第 1/1 条 · 2675 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
@@ -27,7 +27,7 @@ We have uploaded the revised manuscript, and the pdfdiff on OpenReview shows eve
 
 - **Descriptor-free kernel test in App. B.2.** We now compare the descriptor test with a kernel test on all benchmark events and 3W transitions (pSK8).
 - **Sensitivity under the corrected split in App. B.2.** We now report each setting of Tab. 1 varied one at a time, with the overlap of the SMD P sets (pSK8).
-- **3W control in §4.1, App. B.1.2 and §5.** We now report the detection of transition starts against the adjacent normal hour, controls at matched distance from long normal records, and the limits of detections far from the normal reference (wxGK).
+- **3W control in App. B.1.2, with its limit in §4.1 and §5.** App. B.1.2 now reports the detection of transition starts against the adjacent normal hour and controls at matched distance from long normal records, and §4.1 and §5 state the limits of detections far from the normal reference (wxGK).
 - **Onset continuity for PSM and SWaT in App. B.2 and §4.2.** We now report the check of Tab. 8 for all benchmarks with P events (wxGK).
 - **Absolute rejection rates in App. B.2 and Fig. 4.** We now report the rejection rate for every dataset and lead, including 3W (pSK8).
 - **Window length in §4.2 and App. A.3.** We now state the eligibility criterion, the number of events per pre-onset span, and the results at longer spans (pSK8). 〔待定③〕

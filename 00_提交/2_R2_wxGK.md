@@ -13,7 +13,7 @@
 
 ---
 
-## 第 1/4 条 · 3184 字符
+## 第 1/4 条 · 3552 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
@@ -24,7 +24,7 @@ We thank Reviewer $\color{blue}{\text{wxGK}}$ for recognizing that the paper sep
 # 1. Drift of normal operation in the 3W positive control
 We thank the reviewer for raising this question. We checked whether slow changes of a well during normal operation, the operating-state drift the reviewer describes, can explain why the test detects 43 of the 47 transitions, the stages that experts annotated between normal operation and each fault. We therefore designed the experiment below.
 
-**1. Experiment.** If drift explains a detection, normal windows that lie as far from their normal reference as the tested window should be flagged just as often. We therefore compared each tested window with normal windows at the same distance from their reference, in two settings. In the first, the tested window is the first ten minutes of the transition, and the reference is an hour of normal operation that ends 30 minutes before the annotated start, so drift has little time to build up. A transition counts as detected when three consecutive 100-second windows are flagged, and the same rule applied to normal operation gives the false-alarm rate. In the second, the tested window is the last 100 seconds before the fault, as in the submission, which lies 0.2 to 166 hours after the normal data, and the normal windows at the same distances come from the long normal-only records of 3W. The test settings are those of the submission. The first setting needs several hours of normal operation before the transition, which 19 of the 47 records, from 14 wells, have.
+**1. Experiment.** If drift explains a detection, normal windows that lie as far from their normal reference as the tested window should be flagged just as often. We therefore compared each tested window with normal windows at the same distance from their reference, in two settings. In the first, the tested window is the first ten minutes of the transition, and the reference is an hour of normal operation that ends 30 minutes before the annotated start, so drift has little time to build up. A transition counts as detected when three consecutive 100-second windows are flagged, and the same rule applied to normal operation gives the false-alarm rate. In the second, the tested window is the last 100 seconds before the fault, as in the submission, which lies 0.2 to 166 hours after the normal data, and the normal windows at the same distances come from the long normal-only records of 3W. The test settings are those of the submission. Both settings need at least 3.5 hours of normal operation before the transition: an hour for the reference, then the placebo windows of the null, then an hour between those windows and the transition. All 19 records with that much, from 14 wells, are used. The other 28 have a median of 1.4 hours and at most 3.47, and 11 of the 47 have less than one hour, shorter than the reference alone, so no design that keeps the reference of the submission can cover all 47.
 
 **2. Results.** Drift does not explain the detections at the start of the transitions, but it can explain the detections far from the normal data (Table A).
 
@@ -34,7 +34,7 @@ Table A- 3W transitions detected by the test and expected from drift alone (19 r
 | Transition start | 30–40 min | **11 / 19** | 0.8 / 19 |
 | Before fault onset | 0.2–166 h | 15 / 19 | 10.3 / 19 |
 
-Under the same rule, normal stretches are flagged in 4.1% of cases, so drift alone would give 0.8 of the 11 detections at the transition start. Normal windows as far from their reference as the windows before the fault are flagged in 49% to 75% of cases, so drift alone would give 10.3 of the 15 detections there. Drift thus explains almost none of the detections at the transition start but most of those in the submission. We chose the gap and the three-window rule among the variants of App. B.1.2 to keep false alarms low, and a single window without gap gives 10 of 19 against 4.9%. The revision reports the 3W control at the transition start in §4.1, drops "recovering real precursors" (l.344), adds Table A and the variants to App. B.1.2, and states this limit in §5.
+Under the same rule, normal stretches are flagged in 4.1% of cases, so drift alone would give 0.8 of the 11 detections at the transition start. Normal windows as far from their reference as the windows before the fault are flagged in 49% to 75% of cases, so drift alone would give 10.3 of the 15 detections there. Drift thus explains almost none of the detections at the transition start but most of those in the submission. We chose the gap and the three-window rule among the variants of App. B.1.2 to keep false alarms low, and a single window without gap gives 10 of 19 against 4.9%. The revision adds this control, Table A and the variants to App. B.1.2, states in §4.1 and §5 that detections far from the normal reference cannot be separated from drift, and drops "recovering real precursors" (l.344).
 
 *(Continued in 2/4.)*
 
@@ -102,7 +102,7 @@ Per-machine training raises both groups, by 0.05 and 0.15 with the mean and by 0
 
 ---
 
-## 第 4/4 条 · 3399 字符
+## 第 4/4 条 · 3438 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
@@ -125,7 +125,7 @@ Table D- Smallest detectable MPA and largest upper bound of MPA over seven detec
 On SMD every upper bound is at most 0.656, so an MPA of 0.66 or more is excluded for all seven detectors, and on SWaT values above 0.672 are excluded. Values between 0.5 and about 0.65 remain possible on SMD, where the smallest detectable MPA of 0.60 also lies, so the data do not establish negligible discrimination. The closest case is A2P, an early-warning model, with MPA 0.573 and a difference to non-precursor events of +0.105 [0.013, 0.194], which is not significant after correction even when the correction covers only the seven SMD cells (q = 0.10). PSM has too few events to exclude any value of practical interest. The revision states these bounds next to every significance result in §4.3, reports the per-detector values in App. B.3, and limits the abstract (l.021–023) to the 21 SMD, PSM and SWaT combinations, stating that the upper bounds on SMD exclude an MPA of 0.66 or more.
 
 # Summary of revisions
-- **3W control in §4.1, App. B.1.2 and §5.** We now report the detection of transition starts against normal operation shortly before them, with controls at the same distance, and state that detections far from the normal reference cannot be separated from drift.
+- **3W control in App. B.1.2, with its limit in §4.1 and §5.** App. B.1.2 now reports the detection of transition starts against normal operation shortly before them, with controls at the same distance, and §4.1 and §5 state that detections far from the normal reference cannot be separated from drift.
 - **Onset-continuity check for PSM and SWaT in App. B.2 and §4.2.** We now report Table B and the list of events, and state that benchmark-level evidence rests mainly on SMD.
 - **Training and aggregation in §4.3 and App. B.3.** We now report Table C in place of the per-machine comparison in the contributions, §4.3, the limitations and the conclusion.
 - **Excluded effect sizes in the abstract, §4.3 and App. B.3.** We now report Table D and the per-detector values, state the bounds next to every significance result, and limit the abstract to the 21 SMD, PSM and SWaT combinations.
