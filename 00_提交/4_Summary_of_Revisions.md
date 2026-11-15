@@ -13,37 +13,39 @@
 
 ---
 
-## 第 1/1 条 · 2675 字符
+## 第 1/1 条 · 2857 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
 # Summary of Revisions in the Updated Manuscript
 
-〔改稿还没动：下面是回复里承诺的改动，等你批了清单、改完 tex 再按实际落点核一遍〕
-
 We have uploaded the revised manuscript, and the pdfdiff on OpenReview shows every change. The main text stays within 10 pages, and new results are in the appendix with a pointer from the main text. The changes, with the reviewers who asked for them, are listed below.
 
 **Validity of the test**
 
-- **Descriptor-free kernel test in App. B.2.** We now compare the descriptor test with a kernel test on all benchmark events and 3W transitions (pSK8).
-- **Sensitivity under the corrected split in App. B.2.** We now report each setting of Tab. 1 varied one at a time, with the overlap of the SMD P sets (pSK8).
-- **3W control in App. B.1.2, with its limit in §4.1 and §5.** App. B.1.2 now reports the detection of transition starts against the adjacent normal hour and controls at matched distance from long normal records, and §4.1 and §5 state the limits of detections far from the normal reference (wxGK).
-- **Onset continuity for PSM and SWaT in App. B.2 and §4.2.** We now report the check of Tab. 8 for all benchmarks with P events (wxGK).
-- **Absolute rejection rates in App. B.2 and Fig. 4.** We now report the rejection rate for every dataset and lead, including 3W (pSK8).
-- **Window length in §4.2 and App. A.3.** We now state the eligibility criterion, the number of events per pre-onset span, and the results at longer spans (pSK8). 〔待定③〕
+- **Local normal reference on 3W in App. B.1.2.** We now report the detections on all 47 records with the placebo null built from the last 300, 900 or 1800 seconds of normal operation before each transition (wxGK).
+- **Alternative detection mechanisms in App. B.1.3.** We now compare the test with Online Kernel CUSUM, MMDEW and TS2Vec on 3W and on the five benchmarks (pSK8).
+- **Counterfactual ablation in App. B.1.4.** We now report how removing the detected level and trend changes the test and nine models on 3W (pSK8).
+- **Real 3W series in App. B.2.1.** We now show raw signals, annotated stages and flagged windows, including records with many rejections during normal operation (wxGK, pSK8).
+- **Onset continuity for PSM and SWaT in App. B.2.3.** Tab. 8 now includes PSM and SWaT (wxGK).
+- **Rejection rates by lead in Table 2 and §4.2.** We now report leads of 10, 50, 100 and 200 steps and the 3W rates at every lead (pSK8).
 
 **Model results and metrics**
 
-- **Training and aggregation in §4.3 and App. B.3.** We now isolate the two factors with a fixed event set and normal reference, and revise the contributions, limitations and conclusion accordingly (wxGK).
-- **Excluded effect sizes in the abstract and §4.3.** We now state the upper bounds and the minimum detectable MPA with every significance result (wxGK).
-- **Onset-truncated AUC in §4.3 and App. B.3.** We now compare MPA with a threshold-free AUC that excludes late detections (pSK8).
+- **Aggregation and training in App. B.4.3 and App. B.4.5.** We now report paired changes of aggregation with fixed scores, events and controls, pooled against per-machine training under the same budget, and the effect of the normal reference (wxGK).
+- **Excluded effect sizes in the abstract, §4.3 and App. B.4.1.** We now report the machine-level bound and the equivalence analysis next to the significance results (wxGK).
+- **MPA and existing metrics in App. B.5.5 and App. B.5.6.** We now compare MPA with Window-F1, Range-F1, Affiliation-F1 and VUS in a controlled setting and on 3W (pSK8).
 
 **Presentation**
 
-- **Definitions in the abstract, §1 and §3.** We now define every non-standard term at its first use, including exchangeability with references and the rejection rate with its formula (Tery, pSK8).
-- **Reasons for design decisions in §3–4.** We now state the reason where each decision is made, and Fig. 3(a) shows all eight morphologies (pSK8).
-- **Research questions in §4.** We now end each results section with the answer to its research question (pSK8).
-- **Real-series examples in App. B.2.** We now show nine randomly drawn events and 3W transitions (pSK8).
-- **Wording.** We now write online instead of causal, and distinguish precursor evidence from early detection in §3.1 (pSK8).
+- **Definitions in the abstract, §1, §3.1 and §3.2.** We now define onset, placebo calibration, the rejection rate with its formula and both exchangeability assumptions with references, and give the regularized covariance below Eq. 1 (Tery, pSK8).
+- **Reasoning of the test in §3.2 and App. A.2.** We now explain why the test checks local changes and deviation from normal operation together (pSK8).
+- **Research questions in §4.** We now answer RQ1 to RQ3 at the end of their results (pSK8).
+- **Morphologies and eligibility in §4.1, §3.1 and §4.2.** We now explain the five morphologies of Fig. 3(a) and the eligibility criterion with the excluded events per dataset (pSK8).
+- **Wording.** We now avoid the wording causal detector (pSK8).
+
+**New resource**
+
+- **DeviceWarning-162 in App. C.** We now describe a dataset of 162 events on 48 devices with 207 normal reference sequences, released as supplementary material (pSK8).
 
 ▲▲▲ COPY TO HERE ▲▲▲
