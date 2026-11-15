@@ -56,7 +56,7 @@ The revision adds this control, Tables A and A2 and the variants to App. B.1.2, 
 
 ---
 
-## 第 2/4 条 · 2582 字符
+## 第 2/4 条 · 2655 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
@@ -69,12 +69,12 @@ We thank the reviewer for this question. We checked whether the precursor-positi
 
 **2. Results.** The check classifies 6 of the 7 precursor-positive events of PSM and 7 of the 9 of SWaT as boundary shifts, against 6 of 51 on SMD, so most precursor-positive events of PSM and SWaT look like late annotations (Table B).
 
-Table B- Precursor-positive events by the onset-continuity check
-| **Dataset** | Events | Onset jump | Boundary shift | Undetermined |
-| :--- | :---: | :---: | :---: | :---: |
-| SMD | 51 | 38 | 6 | 7 |
-| PSM | 7 | 1 | **6** | 0 |
-| SWaT | 9 | 2 | **7** | 0 |
+Table B- Precursor-positive events by the onset-continuity check. Other = onset jump or undetermined. Tab. 3 counts 49 SMD and 6 PSM events, those scored by all seven detectors.
+| **Dataset** | Events | Boundary shift | Other |
+| :--- | :---: | :---: | :---: |
+| SMD | 51 | 6 | 45 |
+| PSM | 7 | **6** | 1 |
+| SWaT | 9 | **7** | 2 |
 
 In the boundary shifts the large jump lies 8 to 27 seconds before the annotated onset on SWaT and 4 to 41 minutes before it on PSM. On SMD 6 of 51 events are boundary shifts, close to the 9.8% the check assigns to correct annotations. The check is less reliable on PSM and SWaT, since events that change only after onset show an onset jump in 70% of cases on SMD but in 40% on PSM and 20% on SWaT. We therefore draw only the dataset-level conclusion that pre-onset evidence on PSM and SWaT cannot be separated from annotation offsets, which adds to the sensitivity of their dataset-level significance to the placebo pool (App. B.2.2), so benchmark-level evidence rests mainly on SMD. The revision states this in §4.2 and adds Table B and the list of all 16 events to App. B.2.
 
