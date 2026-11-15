@@ -127,6 +127,9 @@ def reconcile_store(threads):
             json.dumps(store[tid], ensure_ascii=False, indent=1), encoding="utf-8")
         store.pop(tid)
         (HERE / "edits" / f"{tid}.md").unlink(missing_ok=True)
+    # 留一个标记，存档就不会变空。页面读到空存档会当成「第一次起服务」，
+    # 把浏览器 localStorage 里的旧副本搬回磁盘，刚剔掉的旧快照就又回来了（11-15 wxGK 这样被盖过两次）
+    store["__reconciled"] = stamp
     store_path.write_text(json.dumps(store, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"  ▸ 网页存盘与源文件不一致，已让源文件生效：{', '.join(stale)}"
           f"（旧快照存到 edits/.stale/）")

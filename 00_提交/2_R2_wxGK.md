@@ -59,7 +59,7 @@ We thank the reviewer for this question. We checked whether the precursor-positi
 Table B- Precursor-positive events by the onset-continuity check
 | **Dataset** | Events | Onset jump | Boundary shift | Undetermined |
 | :--- | :---: | :---: | :---: | :---: |
-| SMD | 51 | 38 | 6 | 7 |
+| SMD | 51 | 45 | 6 | 0 |
 | PSM | 7 | 1 | **6** | 0 |
 | SWaT | 9 | 2 | **7** | 0 |
 
