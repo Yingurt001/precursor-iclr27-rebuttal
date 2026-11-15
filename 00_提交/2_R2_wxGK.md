@@ -85,7 +85,7 @@ In the boundary shifts the large jump lies 8 to 27 seconds before the annotated 
 
 ---
 
-## 第 3/4 条 · 2922 字符
+## 第 3/4 条 · 3269 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
@@ -106,7 +106,7 @@ Table C- iForest MPA on SMD under each training and score (51 precursor-positive
 | Per-machine, mean | 0.602 | 0.678 | −0.076 [−0.163, 0.009] |
 | Per-machine, max | 0.810 | 0.758 | +0.052 [−0.012, 0.112] |
 
-Per-machine training raises both groups, by 0.05 and 0.15 with the mean and by 0.24 and 0.20 with the maximum, so it sharpens the response to any window that departs from normal operation. The near-onset maximum raises the precursor events more than the control under per-machine training, 0.21 against 0.08, consistent with evidence in the final minutes before onset, yet the difference to the control stays within its interval. Ordinary normal windows stay at 0.49 to 0.50 in all four settings, so the pairing is unbiased. The gap of 0.861 against 0.655 in §4.3 therefore came mainly from the different event set and normal reference of that experiment. Among the pooled detectors, only the near-onset peaks of LSTM-VAE exceed the selection control, 0.743 against 0.630 (Tab. 18). The revision replaces the per-machine comparison in the contributions (l.094), §4.3 (l.414–417), the limitations (l.467–469) and the conclusion (l.478) with Table C.
+Per-machine training raises both groups, by 0.05 and 0.15 with the mean and by 0.24 and 0.20 with the maximum, so it sharpens the response to any window that departs from normal operation. The near-onset maximum raises the precursor events more than the control under per-machine training, 0.21 against 0.08, consistent with evidence in the final minutes before onset, yet the difference to the control stays within its interval. Ordinary normal windows stay at 0.49 to 0.50 in all four settings, so the pairing is unbiased. The gap of 0.861 against 0.655 in §4.3 therefore came mainly from the different event set and normal reference of that experiment. Among the pooled detectors, only the near-onset peaks of LSTM-VAE exceed the selection control, 0.743 against 0.630, a difference of +0.113 [0.031, 0.192], while those of DAGMM are matched by it, 0.662 against 0.653 (Tab. 18). The answer to RQ2 is therefore narrow: mean scores separate no benchmark precursor windows from normal operation, and near-onset peaks separate them beyond the selection control only for LSTM-VAE on SMD. The revision replaces the per-machine comparison in the contributions (l.094), §4.3 (l.414–417), the limitations (l.467–469) and the conclusion (l.478) with Table C, and adds the selection control to Tab. 18.
 
 *(Continued in 4/4.)*
 
