@@ -6,223 +6,247 @@
 > 引用：正文写 `[a]` / `[a, Thm. 9]`；新条目随便写进任何一个 `# References` 块（`> [a] 论文标题`），
 > 脚本会给每条帖子末尾补上这条帖子引过的条目，各帖里的 References 不用手动维护。
 >
-> 用 OpenReview 的 `Official Comment` 发：审稿人回复发在对应 review 下，0 号发在论坛顶层。单条上限 5000 字符，当前共 4 条。
-> **发帖顺序：4/4 → 3/4 → 2/4 → 1/4 倒序贴**，页面才会正序显示。
+> 用 OpenReview 的 `Official Comment` 发：审稿人回复发在对应 review 下，0 号发在论坛顶层。单条上限 5000 字符，当前共 6 条。
+> **发帖顺序：6/6 → 5/6 → 4/6 → 3/6 → 2/6 → 1/6 倒序贴**，页面才会正序显示。
 > 每条只复制 `▼▼▼ COPY FROM HERE ▼▼▼` 与 `▲▲▲ COPY TO HERE ▲▲▲` 之间的内容，不含标记行。
 
 
 ---
 
-## 第 1/4 条 · 4712 字符
+## 第 1/6 条 · 4050 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
 We thank Reviewer $\color{green}{\text{pSK8}}$ for finding the problem very interesting and understudied, for reading the paper several times, and for stating concretely which changes would improve the presentation. We respond to the concerns as follows.
 
-*Line, table and section numbers refer to the submitted PDF, and "answer N" refers to the numbered sections of this response. Tables are lettered after those of the response to Reviewer wxGK (A–D).*
+*Line, table and section numbers refer to the submitted PDF, and appendix sections to the revised PDF. Tables F–J are new, and "answer n" refers to section n of this response.*
 
-# 1. Validation of the choices in the precursor detectability test
-We thank the reviewer for this concern. We checked whether the conclusions of the test depend on its choices, all of which Tab. 1 fixes before any benchmark is evaluated. We therefore ran the checks below.
+# 1. Validation of the precursor detectability test
+We thank the reviewer for this concern, which helped us explain the technical choices more completely. The revision states the reasoning behind the test step by step and adds a new experiment that checks whether the deviations it detects are useful for recognizing a coming fault.
 
-**1. Checks.** Each check probes the choices in a different way. Synthetic series with known answers measure how often the test fires without a precursor and how often it finds an injected one (Tab. 5). On the benchmarks we changed each setting of Tab. 1 on its own, keeping the others fixed, and recorded how many events the test flags and whether each dataset has more flagged events than its placebo rate. A kernel test that uses no descriptors replaces the descriptor family itself (answer 6).
+The reasoning has four steps. First, §3.2 defines the test statistic $T$, and App. A.2 and App. B.1.3 explain why we built a dedicated test instead of an existing change-point or self-supervised detector (answer 6). Second, 3W is the one public dataset with independently annotated transitions before each fault, and the test detects 43 of its 47 transitions (§4.1). Third, a counterfactual ablation, described below, checks that the detected deviations carry information about the coming fault. Fourth, on the five public benchmarks, several of which were built for anomaly detection and adapted to prediction by shifting labels, the test finds deviations before onset in only 70 of 500 events. Because real multivariate event datasets for early warning are scarce, the revision also releases DeviceWarning-162, 162 events on 48 devices with 207 normal reference sequences, as supplementary material with its description in App. C. It does not change the results of the submission.
 
-**2. Results.** The dataset-level conclusions do not depend on any single choice (Table E).
+**1. Experiment.** For each of the 47 3W records, we replaced the mean level and the linear trend of the series before the fault by those of normal operation of the same well, which weakens the detected deviation and keeps the other fluctuations. Positives are the last 100 samples before the stable fault of each record, and negatives are 8 normal windows of the same length from the same record, 47 positives and 376 negatives in total. All metrics are computed at the window level without point adjustment, for common anomaly detection, anomaly prediction and supervised classification models.
 
-Table E- Precursor-positive events when one setting of Tab. 1 is changed (five benchmarks; overlap = SMD events flagged in both settings divided by those flagged in either)
-| **Setting** | Events flagged | Overlap on SMD |
-| :--- | :---: | :---: |
-| Primary (Tab. 1) | 70 | 1.00 |
-| Scales {10, 25} / {50, 100} | 90 / 60 | 0.49 / 0.48 |
-| Pool 200 / 400 | 86 / 72 | 0.67 / 0.75 |
-| Shrinkage 0.01 / 0.50 | 73 / 71 | 0.79 / 0.91 |
-| Guard 0 / 100 | 68 / 72 | 0.84 / 0.73 |
-| Normal-only channel ranking | 70 | 0.92 |
-| Three added descriptors | 71 | 1.00 |
+**2. Results.** After the ablation the test flags none of the 47 transitions instead of 43, and every model moves toward chance (Table F).
 
-On synthetic series the test fires on 6.0% of precursor-free events [4.2%, 8.4%], and at full strength it finds seven of the eight injected shapes with power above 0.95, the hardest being nonlinear dependence at 0.79. On the benchmarks the number of flagged events stays between 60 and 90 in every setting, and in every setting SMD, PSM and SWaT have more flagged events than their placebo rate while MSL and SMAP do not. Which SMD events are flagged changes most with the window scale, since shorter windows pick up shorter deviations, so the revision reports counts at the dataset level and states the scale with every count. The kernel test of answer 6 flags 36 of the 500 benchmark events, fewer than the descriptor test. The submission states the sensitivity result at l.396 without a table, and the only robustness file in its supplementary material predates a later correction of the calibration split, so the revision adds Table E to App. B.2, replaces that file, and points to all three checks from §3.2.
+Table F- Window-level results on 3W with the original and the ablated input (original → ablated), 47 windows before the fault and 376 normal windows
+| **Model** | AUROC | AUPRC | Recall | Precision | F1 | MPA |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| iForest | 0.795 → 0.587 | 0.453 → 0.216 | 0.787 → 0.319 | 0.230 → 0.108 | 0.356 → 0.161 | 0.823 → 0.600 |
+| DAGMM | 0.783 → 0.597 | 0.594 → 0.269 | 0.830 → 0.511 | 0.163 → 0.107 | 0.273 → 0.177 | 0.806 → 0.630 |
+| USAD | 0.972 → 0.626 | 0.885 → 0.330 | 1.000 → 0.532 | 0.168 → 0.097 | 0.287 → 0.164 | 0.989 → 0.689 |
+| LSTM-VAE | 0.967 → 0.657 | 0.875 → 0.342 | 1.000 → 0.553 | 0.162 → 0.097 | 0.279 → 0.165 | 0.976 → 0.689 |
+| AnomTrans | 0.623 → 0.579 | 0.314 → 0.221 | 0.553 → 0.234 | 0.271 → 0.136 | 0.364 → 0.172 | 0.672 → 0.585 |
+| FCM | 0.949 → 0.664 | 0.822 → 0.318 | 0.979 → 0.574 | 0.175 → 0.111 | 0.297 → 0.186 | 0.973 → 0.673 |
+| A2P | 0.895 → 0.588 | 0.768 → 0.288 | 0.894 → 0.234 | 0.300 → 0.101 | 0.449 → 0.141 | 0.934 → 0.590 |
+| HGB | 0.874 → 0.568 | 0.399 → 0.143 | 0.660 → 0.149 | 0.408 → 0.135 | 0.504 → 0.141 | 0.880 → 0.573 |
+| RF | 0.883 → 0.638 | 0.474 → 0.158 | 0.511 → 0.021 | 0.421 → 0.029 | 0.462 → 0.025 | 0.896 → 0.681 |
 
-# 2. Comparison with range-based, affiliation and VUS metrics
-We agree that these metrics can be adapted, and we followed the reviewer's suggestion. Range-based precision and recall of Tatbul et al. [b], the affiliation metrics of Huet et al. [c] and VUS of Paparrizos et al. [d] score alarms or scores against the annotated anomaly range, which begins at onset, so a detector earns credit by responding after onset. MPA asks whether scores in the pre-onset window exceed scores in matched normal windows. To exclude late detections, we computed a threshold-free ROC AUC whose positives are only the 100 points before onset of the P events, so no post-onset point can earn credit. The revision adds this comparison to §4.3 and App. B.3.
+AUROC and MPA move toward 0.5 for every model, and AUPRC, recall and F1 all fall, so the level and trend that the test detects contribute to recognizing the window before a fault. The revision adds this ablation to App. B.1.4, and answer 2 and answer 8 compare MPA with the range-based, affiliation and VUS metrics.
 
-**1. Truncation changes the ranking of detectors.** On SWaT, the AUC with all anomaly points as positives ranks iForest, DAGMM and LSTM-VAE highest, and truncation at onset brings all three to or below chance (Table F).
-
-Table F- Point-wise ROC AUC on SWaT against normal points, with all anomaly points or only the 100 points before onset of the P events as positives (scores of Tab. 3)
-| **Model** | All anomaly points | **Before onset only** |
-| :--- | :---: | :---: |
-| iForest | 0.836 | 0.507 |
-| DAGMM | 0.815 | 0.422 |
-| LSTM-VAE | 0.797 | 0.372 |
-
-# References
-
-> [b] Nesime Tatbul, Tae Jun Lee, Stan Zdonik, Mejbah Alam, and Justin Gottschlich. Precision and Recall for Time Series. NeurIPS, 2018.
->
-> [c] Alexis Huet, José Manuel Navarro, and Dario Rossi. Local Evaluation of Time Series Anomaly Detection Algorithms. KDD, 2022.
->
-> [d] John Paparrizos, Paul Boniol, Themis Palpanas, Ruey S. Tsay, Aaron J. Elmore, and Michael J. Franklin. Volume Under the Surface: A New Accuracy Evaluation Measure for Time-Series Anomaly Detection. PVLDB, 2022.
-
-*(Continued in 2/4.)*
+*(Continued in 2/6.)*
 
 ▲▲▲ COPY TO HERE ▲▲▲
 
 
 ---
 
-## 第 2/4 条 · 4585 字符
+## 第 2/6 条 · 4419 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
-*(Continuation of 1/4.)*
+*(Continuation of 1/6.)*
 
-**2. Agreement with MPA.** Across the seven detectors, the onset-truncated AUC ranks the detectors as MPA does, with Spearman correlation 0.96 on SMD and 0.93 on PSM, and 0.67 on SWaT with its 9 P events. Adapted to exclude late detections, this metric family therefore reaches the conclusion of MPA, and unadapted it measures post-onset response.
+# 2. Range-based, affiliation and VUS metrics
+We thank the reviewer for this suggestion. MPA asks whether a detector separates a test-positive candidate window from matched normal windows of the same device. Range-F1 [d] and Affiliation-F1 [e] need a target interval and score how alarms cover it or relate to it in time, and VUS [f] needs point-wise scores and a target interval and integrates over thresholds and tolerances. RQ1 shows that a candidate window deviates from normal operation, but not at which points or for how long the precursor is present. Labeling all 100 points of a positive window as targets therefore assumes a precursor interval that the evidence does not support, even when the evaluation stops at onset. We evaluated the adapted metrics where this assumption can be checked, on 3W with its independently annotated transitions, and in a controlled setting (answer 8).
+
+**1. Experiment.** For each 3W record, the 100 normal samples before the annotated transition (label 0) and the first 100 samples of the transition (label 1) form a 200-sample interval that ends before the stable fault, on which we compute Range-F1, Affiliation-F1, VUS and the point-wise false positive rate. For the window-level metrics, the first 100 samples of the transition form a positive window and 8 normal windows of the same record form its controls, 47 positive and 376 normal windows, for matched MPA, Window-F1 and the window false positive rate. All evaluation ranges and tolerance zones end before the stable fault, so responses after the fault earn no credit.
+
+**2. Results.** Adapted in this way, Range-F1, Affiliation-F1 and VUS describe interval coverage, timing and tolerance, and they complement MPA (Table G).
+
+Table G- Metrics on 3W with all evaluation ranges ending before the stable fault (FPR is the false positive rate per point or per window)
+| **Model** | MPA | Window-F1 | Range-F1 | Affiliation-F1 | VUS-ROC | VUS-PR | Point FPR | Window FPR |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| iForest | 0.625 | 0.218 | 0.365 | 0.480 | 0.627 | 0.702 | 0.238 | 0.375 |
+| DAGMM | 0.795 | 0.235 | 0.491 | 0.601 | 0.765 | 0.809 | 0.509 | 0.596 |
+| USAD | 0.838 | 0.239 | 0.596 | 0.703 | 0.831 | 0.866 | 0.629 | 0.678 |
+| LSTM-VAE | 0.822 | 0.227 | 0.546 | 0.722 | 0.820 | 0.841 | 0.587 | 0.684 |
+| AnomTrans | 0.593 | 0.216 | 0.272 | 0.348 | 0.617 | 0.682 | 0.157 | 0.226 |
+| FCM | 0.814 | 0.239 | 0.600 | 0.682 | 0.798 | 0.872 | 0.565 | 0.641 |
+| A2P | 0.633 | 0.212 | 0.284 | 0.314 | 0.694 | 0.824 | 0.261 | 0.301 |
+
+Each metric measures a different aspect, so their absolute values are not directly comparable. The experiment turns the annotated normal and transition stages of 3W into labels 0 and 1. The other benchmarks have no independent precursor stage, and labeling whole candidate windows there would add an untested assumption on time, which is why the paper reports MPA. The revision adds this comparison to App. B.5.6.
 
 # 3. Definitions of non-standard terms
-The reviewer is right that several terms are used before they are defined. The revision defines each at its first use, as Table G lists.
-
-Table G- Terms and where the revision defines them
-| **Term** | Definition | Where |
-| :--- | :--- | :--- |
-| Onset $t _{e}$ | first step of the annotated anomaly $A _{e}$ | abstract, §1 |
-| Pre-onset interval | $P _{e}(W) = [t _{e}-W, t _{e})$ | §1, §3.1 |
-| Placebo, placebo rate | pseudo-onset in normal operation, held-out rejection rate | abstract, §3.2 |
-| P, I, O events | evidence before onset, only after onset, neither | §3.2 |
-| Exchangeability | answer 14 | §3.2, §3.3 |
-| Selection control | flagged normal windows (answer 8) | §3.3 |
-| Benchmark warnability | share of events with detectable pre-onset evidence | §1 |
-| Online score (was causal) | $s _{i}(t) = f(x _{1:t})$ | §3.1 |
+We thank the reviewer for pointing out that the paper was hard to read on first pass. The revision rewrites the text throughout, gives formal definitions of the proposed concepts in the abstract and the introduction, and points to the appendix at every place in the main text that relies on it. The definitions of onset (answer 11), the rejection rate (answer 15) and exchangeability (answer 14) are examples.
 
 # 4. Reasons for design decisions
-The reviewer is right that several decisions appear without their reason, or with the reason in an appendix that the main text does not point to. The revision states the reason where each decision is made, including the three below.
+We thank the reviewer for this point. The revision states the reason for each decision where it is made and points to the appendix where details are given. For the example of line 299, the setup of §4.1 now states that the experiment covers all eight morphologies, that Fig. 3(a) shows five representative ones to avoid overlapping curves, and that Table 5 in App. B.1.1 reports all eight (answer 16).
 
-**1. Five of eight morphologies in Fig. 3.** Tab. 5 in App. B.1.1 reports all eight. The revision plots all eight in Fig. 3(a) and names Tab. 5 in the §4.1 setup.
+# References
 
-**2. A window of 100 steps.** It is the longest window that keeps nearly all events evaluable (answer 17).
+> [d] Nesime Tatbul, Tae Jun Lee, Stan Zdonik, Mejbah Alam, and Justin Gottschlich. Precision and Recall for Time Series. NeurIPS, 2018.
+>
+> [e] Alexis Huet, José Manuel Navarro, and Dario Rossi. Local Evaluation of Time Series Anomaly Detection Algorithms. KDD, 2022.
+>
+> [f] John Paparrizos, Paul Boniol, Themis Palpanas, Ruey S. Tsay, Aaron J. Elmore, and Michael J. Franklin. Volume Under the Surface: A New Accuracy Evaluation Measure for Time-Series Anomaly Detection. PVLDB, 2022.
 
-**3. Scales of 25 and 50 steps.** The candidate and reference windows of the larger scale together span the 100-step window used for MPA, so both analyses see the same interval (l.177–178).
+*(Continued in 3/6.)*
+
+▲▲▲ COPY TO HERE ▲▲▲
+
+
+---
+
+## 第 3/6 条 · 4714 字符
+
+▼▼▼ COPY FROM HERE ▼▼▼
+
+*(Continuation of 2/6.)*
 
 # 5. Windows after onset
-It is possible, and the test already evaluates this interval, but it measures early detection rather than precursors. Setting $P _{e}(W) = [t _{e}, t _{e}+W)$ asks how quickly an anomaly becomes visible after it starts, which is early detection. A precursor is evidence before $t _{e}$, which is the condition an early-warning benchmark needs. The test already evaluates the reviewer's interval. An event whose pre-onset window is not significant while its equal-length post-onset window is belongs to class I (l.220–221), and 223 of the 293 benchmark events with a detected change are in this class (l.365). The remaining anomaly $A' _{e} = [t _{e}+W, u _{e}]$ would then be the target of a detection-delay metric. The same geometry appears in Tab. 6, where an onset annotated late moves post-onset evidence into the pre-onset window and turns 93% of precursor-free synthetic events into apparent precursors. The revision states this distinction in §3.1.
+We thank the reviewer for this suggestion. Technically, the first $W$ points after onset can be used to predict how the anomaly develops, but this is a different task from the early warning studied in the paper. The work is motivated by industrial systems such as high-end equipment and precision manufacturing, where anomalies lower yield, damage equipment and stop production, so a warning must come before the anomaly starts to leave time for intervention. Setting $P _{e}(W) = [t _{e}, t _{e}+W)$ uses data already labeled as anomalous to predict later parts of the same event. This serves the prediction of anomaly development or fault escalation, which has its own practical value, but it cannot tell whether detectable evidence exists before the anomaly starts and whether models use it to warn early. The test already evaluates the post-onset interval of equal length, and 223 of the 293 benchmark events with a detected change are detected only there (l.365). The revision therefore keeps the candidate precursor window before onset, which separates early warning from detection and prediction after onset.
 
 # 6. Detection with models outside the descriptor family
-We agree that a descriptor test cannot guarantee that it catches all precursors, and §5 states this limit (l.463). We addressed the question in two ways. RQ2 already applies seven learned detectors, and all of them separate the 3W transitions from normal operation with MPA of at least 0.68, while none separates benchmark P windows with mean scores (Tab. 3). Following the reviewer's suggestion, we also replaced the descriptor family by a descriptor-free kernel test and reran it on every event with the placebo calibration unchanged. The revision adds the kernel test to App. B.2.
+We thank the reviewer for this question. We agree that no method based on a finite set of features or a specific detection mechanism can guarantee to find every precursor, so the results of the test describe the evidence that this mechanism detects. To check the test and the effect of the detection mechanism, we compared it with three representative methods, Online Kernel CUSUM [a], a kernel change-point method, MMDEW [b], an efficient online change-point method based on maximum mean discrepancy over exponential windows, and TS2Vec [c], a self-supervised representation of time series.
 
-**1. The kernel test.** It has a change-point branch, the largest maximum mean discrepancy (MMD) between the two sides of any split point inside the window, and a two-sample branch, the MMD between the window and 400 points of normal operation of the same entity, with a Gaussian kernel and median-heuristic bandwidth, following Gretton et al. [a]. Each branch is calibrated against the placebo windows of §3.2, and the two p-values are combined by Bonferroni.
+**1. Experiment.** All methods use the same candidate windows and the same split of normal data for fitting, calibration and verification, and their thresholds are calibrated on the same normal controls. We count detections on the 47 3W transitions and on the 500 benchmark events, and the overlap with the events our test detects.
 
-Table H- Events detected by the descriptor test and by the kernel test (placebo rates 0.034 to 0.056 for both tests)
-| **Events** | Descriptor test | **Kernel test** |
-| :--- | :---: | :---: |
-| 3W, before fault onset | 43 / 47 | **46 / 47** |
-| 3W, before transition start | 11 / 47 | **19 / 47** |
-| Five benchmarks | 70 / 500 | 36 / 500 |
+**2. Results.** At similar false positive rates on normal data, our test detects the most deviations before onset, on 3W and on the benchmarks (Table H).
+
+Table H- Detections of the precursor test and three alternative detectors under the same windows and calibration, with the overlap with our test and the false positive rate (FPR) on normal windows
+| **Method** | 3W detected | Overlap | FPR | Benchmarks detected | Overlap | FPR |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| Our test | **43/47** | -- | 5.03% | **70/500** | -- | 4.58% |
+| Online Kernel CUSUM | 40/47 | 40/43 | 4.81% | 42/500 | 35/70 | 5.02% |
+| MMDEW | 33/47 | 31/43 | 4.50% | 32/500 | 28/70 | 4.73% |
+| TS2Vec | 42/47 | 39/43 | 7.53% | 63/500 | 57/70 | 4.72% |
+
+The mechanisms explain the differences. Online Kernel CUSUM accumulates evidence of a distribution change and suits newly appearing changes during monitoring. MMDEW compares distributions over exponential windows and suits abrupt changes and drift at several time scales. TS2Vec learns a representation that can capture changes outside predefined statistics, but its detections depend on whether the representation keeps the relevant information and on the scoring that follows. Our test checks local changes and the overall deviation from normal operation together, so it adapts to precursors of uncertain form and duration. The change branch captures new changes of mean, variability, trend and dependence between variables, and the deviation branch captures an abnormal state that has already formed and persists, even when the candidate window contains no new change point. Its multi-scale descriptors also explain which change in the data drives a detection, and independent normal controls calibrate its significance. We do not claim that the statistic covers every precursor or outperforms existing methods on every type of change, and change-point and self-supervised detectors can replace it as the evidence component for other data. The revision adds this comparison to App. B.1.3.
 
 # References
 
-> [a] Arthur Gretton, Karsten M. Borgwardt, Malte J. Rasch, Bernhard Schölkopf, and Alexander Smola. A Kernel Two-Sample Test. JMLR, 2012.
+> [a] Song Wei and Yao Xie. Online Kernel CUSUM for Change-Point Detection. Journal of the Royal Statistical Society Series B, 2026.
+>
+> [b] Florian Kalinke, Marco Heyden, Georg Gntuni, Edouard Fouché, and Klemens Böhm. Maximum Mean Discrepancy on Exponential Windows for Online Change Detection. TMLR, 2025.
+>
+> [c] Zhihan Yue, Yujing Wang, Juanyong Duan, Tianmeng Yang, Congrui Huang, Yunhai Tong, and Bixiong Xu. TS2Vec: Towards Universal Representation of Time Series. AAAI, 2022.
 
-*(Continued in 3/4.)*
+*(Continued in 4/6.)*
 
 ▲▲▲ COPY TO HERE ▲▲▲
 
 
 ---
 
-## 第 3/4 条 · 4487 字符
+## 第 4/6 条 · 4294 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
-*(Continuation of 2/4.)*
+*(Continuation of 3/6.)*
 
-**2. Reading.** The kernel test is more sensitive than the descriptor test on the 3W transitions, where precursors are known to exist, and it finds fewer benchmark events. The sparsity of benchmark evidence therefore does not come from the choice of descriptors. Per dataset the kernel test detects 19 of 320 SMD, 4 of 35 MSL, 3 of 67 SMAP, 3 of 45 PSM and 7 of 33 SWaT events, and only SWaT exceeds its placebo rate ($p$ = 0.002). The two tests agree on 17 benchmark events.
+# 7. Rejection rates by lead
+We thank the reviewer for pointing out this gap between the text and the figures. The revision extends Table 2, which reported the rejection rate at lead 0, with the event rejection rates of the five benchmarks at leads of 10, 50, 100 and 200 steps, and its caption states the time unit of each dataset and how the rates are computed (Table I).
 
-# 7. Absolute rejection rates by lead
-The reviewer is right. The two sentences at l.376–377, which are in §4.2, quote absolute rejection rates, whereas Fig. 4(b) shows only the excess over the placebo rate, and the 3W rates appear nowhere. Table I gives them, and the revision adds the full table for every dataset and lead to App. B.2 and states in the caption of Fig. 4 that it shows the excess.
+Table I- Event rejection rate $r _\ell$ at lead $\ell$ (one step is one minute, and one second on SWaT) and normal rejection rate $r _n$, as now in Table 2
+| **Dataset** | $r _0$ | $r _{10}$ | $r _{50}$ | $r _{100}$ | $r _{200}$ | $r _n$ |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| SMD | 0.159 | 0.075 | 0.056 | 0.027 | 0.039 | 0.047 |
+| MSL | 0.029 | 0.086 | 0.029 | 0.088 | 0.030 | 0.046 |
+| SMAP | 0.030 | 0.045 | 0.060 | 0.106 | 0.045 | 0.045 |
+| PSM | 0.156 | 0.178 | 0.182 | 0.091 | 0.095 | 0.034 |
+| SWaT | 0.273 | 0.364 | 0.091 | 0.152 | 0.000 | 0.037 |
 
-Table I- Rejection rate by lead before onset (minutes for SMD and PSM, seconds for SWaT and 3W)
-| **Dataset** | 0 | 10 | 50 | 200 | Placebo |
+Fig. 4 is unchanged and still shows the excess of the event rejection rate over the normal rejection rate with its significance. The revised text and caption distinguish the event rejection rate of Table 2 from the excess of Fig. 4, and every number quoted in the text now refers to Table 2. For 3W, the text adds that over the ten leads from 0 to 200 seconds the rejection rate is 0.936 at 10 and 20 seconds and 0.915 at the other eight.
+
+# 8. Reliability of MPA
+We thank the reviewer for this question. MPA was designed to measure, for events whose window before onset deviates detectably, whether a model separates the candidate window from normal windows of the same device. Unlike the other metrics, it needs neither the position and duration of the precursor inside the window nor an alarm threshold (answer 2). Since real datasets have no point-wise precursor ground truth, we compared MPA with the other metrics in a controlled scoring experiment, where every metric has the labels it needs.
+
+**1. Experiment.** We set a candidate precursor window of 32 points as the positive target and all other points before the anomaly as normal negatives, which gives window labels for Window-F1 and the interval and point labels that Range-F1, Affiliation-F1 and VUS need. We then generated model scores for several cases, with 20 independent repetitions of 16 simulated cases each. Normal point scores follow a normal distribution with mean 0 and variance 1. The weak and strong precursor responses shift the mean of the precursor window by 0.25 and 1.0, and the post-onset response scores high only after the anomaly starts.
+
+**2. Results.** All five metrics rise as the precursor response strengthens, but only MPA has a fixed chance level of 0.5, and the strict pre-onset versions of the F1 metrics give no credit to a response after onset (Table J).
+
+Table J- Controlled comparison of metrics on the same predefined target, four representative scoring cases
+| **Scoring case** | MPA | Window-F1 | Range-F1 | Affiliation-F1 | VUS-PR |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| SMD | 0.159 | 0.075 | 0.056 | 0.039 | 0.047 |
-| PSM | 0.156 | 0.178 | 0.182 | 0.095 | 0.034 |
-| SWaT | 0.273 | 0.364 | 0.091 | 0.000 | 0.037 |
-| 3W | 0.915 | 0.936 | 0.915 | 0.915 | 0.050 |
+| Random scores | 0.500 | 0.092 | 0.228 | 0.653 | 0.223 |
+| Weak precursor response | 0.842 | 0.513 | 0.306 | 0.697 | 0.267 |
+| Strong precursor response | 1.000 | 0.893 | 0.478 | 0.826 | 0.470 |
+| Response only after onset | 0.500 | 0.000 | 0.000 | 0.000 | 0.201 |
 
-On SMD the rate halves from 0.159 to 0.075 within 10 minutes and reaches 0.056 at 50 minutes, close to the placebo rate of 0.047. On 3W it stays between 0.915 and 0.936 at every lead from 0 to 200 seconds.
+With random scores, Affiliation-F1 still reaches 0.653 and VUS-PR 0.223, so these metrics have their own baselines that cannot be compared with the 0.5 of MPA. When the model responds only after onset, MPA stays at 0.5 and Window-F1, Range-F1 and Affiliation-F1 restricted to the time before onset are 0, so these adjusted metrics also deny late alarms credit for early warning. MPA also matches its probabilistic meaning. With a mean shift of 0.25 in a 32-point window, the theoretical probability that a precursor window outscores its matched normal window is 0.8413, and the measured MPA is 0.8419. With reliable point-wise precursor ground truth, the adjusted metrics proposed by the reviewer can therefore also evaluate precursor detection. Real datasets lack such labels, so the paper uses MPA to evaluate how models separate candidate precursor windows from matched normal windows. The revision adds this experiment to App. B.5.5.
 
-# 8. Validation of MPA
-Yes, in two ways, a controlled validation with known ground truth and a comparison with an onset-truncated AUC on the benchmarks. Fig. 3(b) in §4.1 is the controlled validation, and the revision presents it as such. In synthetic events with known ground truth, every input-blind score (constant, random, time-only and post-onset-only) stays near 0.5, while a score that receives an increasing fraction of the injected precursor rises from 0.487 to 0.982. A metric for precursor discrimination needs both properties, no credit without pre-onset information and growth with that information. Point-adjusted F1 fails the first, since random alarms at matched rates reach 0.431 Shifted-warning F1 under PA, above every detector (Tab. 4). On the benchmarks, the onset-truncated AUC of answer 2 ranks the detectors as MPA does (Spearman 0.96 on SMD).
+*(Continued in 5/6.)*
 
-Table G lists the selection control, which is the set of normal windows that the test flags. A detector that scores deviations already separates these windows from other normal windows, so separation specific to precursor windows must exceed this level (l.412–413).
+▲▲▲ COPY TO HERE ▲▲▲
+
+
+---
+
+## 第 5/6 条 · 4754 字符
+
+▼▼▼ COPY FROM HERE ▼▼▼
+
+*(Continuation of 4/6.)*
 
 # 9. Interval-averaged F1
-F1 can be computed on interval-averaged scores, and this removes the point-wise problem, but F1 still requires a threshold and counts alarms, so its value depends on the alarm rate. At a 5% point-wise rate, independent random alarms hit a 100-step interval with probability about 0.99, and under PA they outscore every detector (l.453–455, Tab. 4). MPA is the threshold-free form of the reviewer's suggestion. It compares the averaged score of each pre-onset interval with the averaged scores of matched normal intervals, and its chance level is 0.5 for any score (l.234). The revision adds this explanation to §3.3.
+We thank the reviewer for this suggestion. We computed Window-F1 on the same window-averaged scores as MPA, with the classification threshold calibrated on independent normal data. With the model scores fixed, raising the ratio of normal to precursor windows from 1:1 to 20:1 lowers Window-F1 from 0.800 to 0.167, while MPA stays at 0.750. Window-F1 thus evaluates window classification at a given threshold and depends on the class ratio, and MPA evaluates the ranking of matched windows without a fixed threshold.
 
 # 10. Precursors on real time series
-Yes. The revision adds a figure to App. B.2 with nine real events drawn at random with a fixed seed, two P, two O and one I event from SMD, and two detected and two undetected 3W transitions. Each panel shows the onset, the window evaluated by the test and the three channels whose mean changes most between the last 100 steps and the 100 steps before, together with the verdict of the test.
+We thank the reviewer for this suggestion. App. B.2.1 now shows real 3W time series, with the raw signals of representative channels, the annotated normal, transition and fault stages, and the windows flagged by the test, so the reader can see when the test responds and to which change in the signal. Besides records whose transition is detected, it shows records with many rejections during normal operation next to records with few or none. Aligning the raw signals, the stages and the test results shows how changes of level or trend trigger the test and how changes during normal operation can lead to false rejections. These real cases complement the synthetic experiments and show both how the test responds and where it fails.
 
 # 11. Definition of onset
-The onset $t _{e}$ is the first time step of an annotated anomaly interval $A _{e} = [t _{e}, u _{e}]$ (l.153). Pre-onset refers to times before $t _{e}$, and near-onset to the final steps of the 100-step pre-onset window. The revision gives these definitions in the abstract and in the first paragraph of §1.
+The second paragraph of the introduction now defines the onset as the time at which an annotated anomaly event starts, the first time step of the anomaly interval. Pre-onset refers to the interval before this time, and near-onset to the time just before it. These definitions agree with the problem setting of §3.1.
 
 # 12. The word causal
-We use causal in the signal-processing sense, a score at time $t$ that uses only $x _{1:t}$ (l.180). We agree that the word suggests causal inference, and the revision replaces it by online throughout.
+To avoid confusion, the revision removes the wording causal detector.
 
 # 13. Answers to the research questions in §4
-We agree. The revision ends §4.2, §4.3 and §4.4 with an explicit answer to RQ1, RQ2 and RQ3 in one or two sentences, in the order of the questions in §1.
+We thank the reviewer for this appreciation of the research questions. The revision reorganizes §4 so that its results map onto RQ1 to RQ3 and answers each question directly. For RQ1, 70 of the 500 evaluable events of the five benchmarks show a detectable deviation before onset. For RQ2, after multiple-testing correction no mean score of the 35 model and dataset combinations separates precursor windows significantly, while some local peaks near onset provide additional separation, which shows the limits of several common benchmarks for evaluating early warning. For RQ3, with scores and thresholds unchanged, point adjustment raises the mean Shifted-warning F1 from 0.036 to 0.177 without changing when any alarm is raised.
 
-*(Continued in 4/4.)*
+# 14. Exchangeability
+We thank the reviewer for this suggestion. §3.2 and §3.3 now explain the meaning, the theoretical basis and the conditions of the two exchangeability assumptions. The first serves the precursor detectability test. If nothing special happens before an anomaly, the statistic $T$ of the event window and those of the placebo windows from normal operation are exchangeable, so the event statistic is not systematically larger. The empirical p-value from its rank then keeps the probability of declaring a normal window significant at or below the level $\alpha$, as for conformal p-values [g] and [h]. The second serves MPA. If the scores of a precursor window and of a matched normal window are exchangeable under the null, each is higher with the same probability, ties count one half, and the expected MPA is 0.5. The revision also states when these results hold. Overlapping windows and changing operating conditions can break exchangeability, and selecting P events with the test can give a model a higher MPA only because it detects large normal fluctuations. The paper therefore measures the actual rejection rate on held-out normal windows and uses test-positive normal pseudo-events as a selection control, which checks whether a model separates more than the selection itself explains.
+
+# 15. Rejection rate at l.213
+§3.2 now explains the rejection rate and gives its formula. A rejection means rejecting the null hypothesis that the change of the time-series features between the candidate window before onset and its reference window, or its deviation from the normal state, stays within the variation of placebo windows in normal operation. When the p-value is at most 0.05, the null is rejected and the window shows a statistically detectable deviation before onset. The rejection rate is the share of evaluable events whose candidate window is rejected.
+
+# References
+
+> [g] Vladimir Vovk, Alexander Gammerman, and Glenn Shafer. Algorithmic Learning in a Random World. Springer, 2005.
+>
+> [h] Jing Lei, Max G'Sell, Alessandro Rinaldo, Ryan J. Tibshirani, and Larry Wasserman. Distribution-Free Predictive Inference for Regression. JASA, 2018.
+
+*(Continued in 6/6.)*
 
 ▲▲▲ COPY TO HERE ▲▲▲
 
 
 ---
 
-## 第 4/4 条 · 4844 字符
+## 第 6/6 条 · 2770 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
-*(Continuation of 3/4.)*
-
-# 14. Exchangeability
-The revision defines both notions where they are used and cites the conformal-inference results of Vovk et al. [e] and Lei et al. [f] that they rest on.
-
-**1. Event–placebo exchangeability (§3.2, l.205–211).** If the pre-onset window of an event behaves like normal operation of its entity, its statistic $T _{e}$ and the placebo statistics $T ^{(0)} _{i,1}, \dots, T ^{(0)} _{i,M _0}$ are exchangeable, meaning that their joint distribution does not change when they are permuted. The rank of $T _{e}$ among them is then uniform, so the p-value of Eq. 2 satisfies $\Pr(p _{e,\ell} \le \alpha) \le \alpha$, which is the validity argument of conformal p-values [e].
-
-**2. Paired-window exchangeability (§3.3, l.234).** If a score carries no information about the event, the score of the precursor window and those of its matched controls are exchangeable, so each comparison in Eq. 3 is won with probability one half and $\mathbb{E}[\text{MPA}] = 0.5$, also for a constant score (App. A.4, l.752).
-
-# 15. Rejection rate at l.213
-The revision adds the formula and its reading at l.213. For dataset $d$ with eligible events $E _{d}$ and held-out normal windows $V _{d}$,
-
-$$\hat{r} _{d,\ell} = \frac{1}{|E _{d}|} \sum _{e \in E _{d}} D _{e}(\ell; \alpha), \qquad \hat{r} ^{(0)} _{d} = \frac{1}{|V _{d}|} \sum _{v \in V _{d}} D _{v}(\alpha),$$
-
-that is, the share of events whose candidate window at lead $\ell$ is rejected, and the share of held-out normal windows rejected by the same rule. The excess $\hat{\eta} _{d,\ell} = \hat{r} _{d,\ell} - \hat{r} ^{(0)} _{d}$ is the share of events with evidence beyond what normal windows already produce.
+*(Continuation of 5/6.)*
 
 # 16. Morphologies in Fig. 3
-Tab. 5 in App. B.1.1 reports all eight morphologies at four strengths, and the weakest at full strength is nonlinear dependence (0.79). The revision plots all eight in Fig. 3(a) and names Tab. 5 in the §4.1 setup.
+The setup of §4.1 now states that the experiment covers all eight precursor morphologies and that Fig. 3(a) shows five representative ones to avoid overlapping curves, namely level change, slow drift, variance change, spectral change and change of nonlinear dependence. These five cover different types of change and different levels of difficulty for the test. Table 5 in App. B.1.1 reports all eight morphologies at four injection strengths, including jumps, autocorrelation and linear dependence, and the main text now points to it.
 
 # 17. Eligibility of 500 of 537 events
-〔待定③：下面按「只写 100 是数据决定的 + 附录表」起草，长窗口只放附录、不另做验证型实验〕
-
-An event is eligible when the 100 steps before its onset, the candidate and reference windows at the largest scale, contain only normal points, with no earlier anomaly and no start of the series among them (l.159). Thirty-seven of the 537 events have fewer than 100 such steps. The same count explains the choice of 100 steps, since longer windows leave fewer events to evaluate (Table J). The revision states the criterion and Table J in §4.2 and App. A.3.
-
-Table J- Events with at least the given number of clean steps before onset, out of 537
-| **Clean steps** | 100 | 200 | 1000 | 2000 | 5000 |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Events** | 500 | 474 | 307 | 157 | 49 |
-
-We also ran the test with the candidate and reference windows extended to 2000 steps. On the 136 events evaluable at that span, the test flags 68, but only 6 of them are among the 17 flagged at 100 steps. On SMD the rejection rate at this span stays above the placebo rate even when the window ends 2000 steps before onset (0.125 against 0.052), the pattern of slow differences in operating state that a deviation test cannot separate from precursors (l.463–465). The revision therefore states every sparsity result for the 100 steps before onset and reports the longer spans in App. B.2.
+§3.1 and §4.2 now state the eligibility criterion. An event of the five benchmarks is eligible when the complete 100 samples before its onset lie inside one entity and overlap no other annotated anomaly interval. Of the 537 annotated events, 37 have no complete and uncontaminated interval before onset and are excluded, 7 on SMD, 1 on MSL, 0 on SMAP, 27 on PSM and 2 on SWaT. This selection depends only on data availability and the annotated intervals, not on whether the test finds a precursor, so all 500 remaining events enter the test and are then divided into P, I and O.
 
 # Summary of revisions
-- **Validation of test choices in App. B.2 and §3.2.** We now report Table E and the kernel test of Table H, with pointers from §3.2.
-- **Onset-truncated AUC in §4.3 and App. B.3.** We now compare MPA with a threshold-free AUC that excludes late detections.
-- **Definitions and wording in the abstract, §1 and §3.** We now define every term of Table G at first use, with the formulas of answers 14 and 15, and write online instead of causal.
-- **Reasons and answers in §3–4.** We now state the reason for each design decision where it is made, plot all eight morphologies in Fig. 3(a), and end each results section with the answer to its research question.
-- **Rejection rates and examples in App. B.2.** We now report Table I for every dataset and lead and show nine randomly drawn real events.
-- **Eligibility and window length in §4.2 and App. A.3.** We now state the criterion, Table J and the longer spans.
+- **Reasoning and counterfactual ablation in §3.2, App. A.2 and App. B.1.4.** We now state how the test is validated step by step and report Table F.
+- **Alternative detection mechanisms in App. B.1.3.** We now compare the test with Online Kernel CUSUM, MMDEW and TS2Vec (Table H).
+- **Range-based, affiliation and VUS metrics in App. B.5.5 and App. B.5.6.** We now report the controlled comparison of Table J and the 3W comparison of Table G.
+- **Rejection rates by lead in Table 2 and §4.2.** We now report leads 10, 50, 100 and 200 and the 3W rates at every lead.
+- **Real 3W series in App. B.2.1.** We now show raw signals, stages and flagged windows, including failure cases.
+- **Definitions and wording in the abstract, §1, §3.1 and §3.2.** We now define onset, the rejection rate and both exchangeability assumptions, and remove the wording causal detector.
+- **Research questions in §4.** We now answer RQ1 to RQ3 at the end of their results.
+- **Morphologies and eligibility in §4.1, §3.1 and §4.2.** We now explain the five morphologies of Fig. 3(a) and the eligibility criterion with the excluded events per dataset.
+- **New dataset in App. C.** We now describe DeviceWarning-162, released as supplementary material.
 
 Following your suggestions, we will include these results and clarifications in the revised version. We hope these responses address most of your concerns, and we would be grateful if you would take them into account in your assessment. We are happy to clarify anything further during the discussion period.
-
-# References
-
-> [e] Vladimir Vovk, Alexander Gammerman, and Glenn Shafer. Algorithmic Learning in a Random World. Springer, 2005.
->
-> [f] Jing Lei, Max G'Sell, Alessandro Rinaldo, Ryan J. Tibshirani, and Larry Wasserman. Distribution-Free Predictive Inference for Regression. JASA, 2018.
 
 ▲▲▲ COPY TO HERE ▲▲▲
