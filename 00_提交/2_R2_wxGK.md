@@ -13,7 +13,7 @@
 
 ---
 
-## 第 1/4 条 · 4178 字符
+## 第 1/4 条 · 3404 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
@@ -22,11 +22,11 @@ We thank Reviewer $\color{blue}{\text{wxGK}}$ for recognizing that the paper sep
 *Line, table and section numbers refer to the submitted PDF. Tables A–D are new, and the revised appendix reports them in full.*
 
 # 1. Drift of normal operation in the 3W positive control
-We thank the reviewer for raising this question. We checked whether slow changes of a well during normal operation, the operating-state drift the reviewer describes, can explain why the test detects 43 of the 47 transitions, the stages that experts annotated between normal operation and each fault. We therefore designed the experiment below.
+We thank the reviewer for raising this question. We checked whether the 43 of 47 transitions detected in §4.1, the stages that experts annotated between normal operation and each fault, reflect operating-state drift, by rebuilding the placebo null from the normal operation just before each transition, and whether this analysis extends to all 47 records.
 
-**1. Experiment.** If drift explains a detection, normal windows that lie as far from their normal reference as the tested window should be flagged just as often. We therefore compared each tested window with normal windows at the same distance from their reference, in two settings. In the first, the tested window is the first ten minutes of the transition, and the reference is an hour of normal operation that ends 30 minutes before the annotated start, so drift has little time to build up. A transition counts as detected when three consecutive 100-second windows are flagged, and the same rule applied to normal operation gives the false-alarm rate. In the second, the tested window is the last 100 seconds before the fault, as in the submission, which lies 0.2 to 166 hours after the normal data, and the normal windows at the same distances come from the long normal-only records of 3W. The test settings are those of the submission. Both settings need at least 3.5 hours of normal operation before the transition: an hour for the reference, then the placebo windows of the null, then an hour between those windows and the transition. All 19 records with that much, from 14 wells, are used. The other 28 have a median of 1.4 hours and at most 3.47, and 11 of the 47 have less than one hour, shorter than the reference alone, so no design that keeps the reference of the submission can cover all 47. The chronological split of App. B.1.2 needs less, about 2.6 hours, and 23 of the 47 records have it, of which the submission used 16, the first eight records by file name in each fault class. Counting all verification windows together, 529 of 1920 (27.6%, 95% interval 15.2–45.8% over wells) are rejected on the 23 records, against 300 of 1354 (22.2%) on the 16, where the 29.2% of the submission averages the records instead. The chronological split thus flags normal operation on the full set as well, which is why the adjacent design above answers the first part of the question.
+**1. Experiment.** For each transition, the reference is the hour of normal operation that ends 30 minutes before the annotated start, the placebo null comes from earlier normal operation of the same record, and the test settings are those of the submission. We tested two windows, the start of the transition, counted as detected when three consecutive 100-second windows are flagged, and the last 100 seconds before the fault, the window of the submission. To see what drift alone would give, we applied the same test to normal windows at the same distance from their reference, taken from the long normal-only records of 3W for distances of up to 166 hours.
 
-**2. Results.** Drift does not explain the detections at the start of the transitions, but it can explain the detections far from the normal data (Table A).
+**2. Results.** With this null, the window before the fault is still flagged in 15 of 19 records, but drift alone would flag 10.3, so these detections cannot be separated from drift, as the reviewer suggests, while the start of the transitions is flagged in 11 of 19 against 0.8 from drift (Table A).
 
 Table A- 3W transitions detected by the test and expected from drift alone (19 records)
 | **Tested window** | Gap to reference | Detected | Expected from drift |
@@ -34,7 +34,11 @@ Table A- 3W transitions detected by the test and expected from drift alone (19 r
 | Transition start | 30–40 min | **11 / 19** | 0.8 / 19 |
 | Before fault onset | 0.2–166 h | 15 / 19 | 10.3 / 19 |
 
-Under the same rule, normal stretches are flagged in 4.1% of cases, so drift alone would give 0.8 of the 11 detections at the transition start. Normal windows as far from their reference as the windows before the fault are flagged in 49% to 75% of cases, so drift alone would give 10.3 of the 15 detections there. Drift thus explains almost none of the detections at the transition start but most of those in the submission. We chose the gap and the three-window rule among the variants of App. B.1.2 to keep false alarms low, and a single window without gap gives 10 of 19 against 4.9%. The revision adds this control, Table A, the variants and the chronological split on all 23 records to App. B.1.2, states in §4.1 and §5 that detections far from the normal reference cannot be separated from drift, and drops "recovering real precursors" (l.344).
+Normal windows are flagged in 4.1% of cases at 30–40 minutes from their reference and in 49% to 75% at 0.2–166 hours, which gives the expected counts of Table A. We chose the gap and the three-window rule among the variants of App. B.1.2 to keep false alarms low, and a single window without gap gives 10 of 19 against 4.9%.
+
+The analysis cannot reach all 47 records. The design above needs at least 3.5 hours of normal operation before the transition and uses all 19 records that have it, from 14 wells, while the other 28 have a median of 1.4 hours and 11 of the 47 have less than the one-hour reference. The chronological split of App. B.1.2 needs about 2.6 hours, which 23 records have, of which the submission used 16, the first eight records by file name in each fault class. On all 23, 529 of 1920 verification windows (27.6%, 95% interval 15.2–45.8% over wells) are rejected, against 300 of 1354 (22.2%) on the 16, where the 29.2% of the submission averages the records instead.
+
+The revision adds this control, Table A, the variants and the chronological split on all 23 records to App. B.1.2, states in §4.1 and §5 that detections far from the normal reference cannot be separated from drift, and drops "recovering real precursors" (l.344).
 
 *(Continued in 2/4.)*
 
