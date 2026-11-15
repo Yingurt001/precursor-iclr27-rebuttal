@@ -13,7 +13,7 @@
 
 ---
 
-## 第 1/4 条 · 3404 字符
+## 第 1/4 条 · 4387 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
@@ -36,9 +36,18 @@ Table A- 3W transitions detected by the test and expected from drift alone (19 r
 
 Normal windows are flagged in 4.1% of cases at 30–40 minutes from their reference and in 49% to 75% at 0.2–166 hours, which gives the expected counts of Table A. We chose the gap and the three-window rule among the variants of App. B.1.2 to keep false alarms low, and a single window without gap gives 10 of 19 against 4.9%.
 
-The analysis cannot reach all 47 records. The design above needs at least 3.5 hours of normal operation before the transition and uses all 19 records that have it, from 14 wells, while the other 28 have a median of 1.4 hours and 11 of the 47 have less than the one-hour reference. The chronological split of App. B.1.2 needs about 2.6 hours, which 23 records have, of which the submission used 16, the first eight records by file name in each fault class. On all 23, 529 of 1920 verification windows (27.6%, 95% interval 15.2–45.8% over wells) are rejected, against 300 of 1354 (22.2%) on the 16, where the 29.2% of the submission averages the records instead.
+**3. Extension to all 47 records.** No analysis of this kind can cover all 47 records, but the chronological split extends from 16 to 23. Both designs need normal operation of the same record before the transition, and 11 of the 47 records have less than one hour of it. The chronological split cuts the longest normal stretch before the transition into three equal parts, for fitting, the null and verification, each with at least 20 windows of 100 seconds at a stride of 150 seconds, which takes about 2.6 hours. 23 of the 47 records have that much, and the submission used 16 of them, the first eight records by file name in each fault class. The design of Table A needs at least 3.5 hours, an hour for the reference, then the placebo null, then an hour between them and the transition, and uses all 19 records that have it, from 14 wells. Table A2 reports the chronological split on all 23 records, with windows counted together across records.
 
-The revision adds this control, Table A, the variants and the chronological split on all 23 records to App. B.1.2, states in §4.1 and §5 that detections far from the normal reference cannot be separated from drift, and drops "recovering real precursors" (l.344).
+Table A2- Chronological split of App. B.1.2 on the 16 records of the submission and on all 23 records that allow it, rejected windows over all windows (95% interval over wells)
+| **Window** | 16 records, 9 wells | 23 records, 16 wells |
+| :--- | :---: | :---: |
+| Normal, verification third | 300 / 1354 (22.2%, 10.7–43.0%) | 529 / 1920 (27.6%, 15.2–45.8%) |
+| Transition | 10816 / 10956 (98.7%) | 21028 / 21172 (99.3%) |
+| Last window before the fault | 15 / 16 | 22 / 23 |
+
+The 29.2% of the submission is the first row on the 16 records averaged over records instead. On all 23 records the split still rejects 27.6% of normal windows, which is why Table A builds the null from the normal operation just before each transition.
+
+The revision adds this control, Tables A and A2 and the variants to App. B.1.2, states in §4.1 and §5 that detections far from the normal reference cannot be separated from drift, and drops "recovering real precursors" (l.344).
 
 *(Continued in 2/4.)*
 
@@ -47,7 +56,7 @@ The revision adds this control, Table A, the variants and the chronological spli
 
 ---
 
-## 第 2/4 条 · 2368 字符
+## 第 2/4 条 · 2582 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
@@ -58,16 +67,16 @@ We thank the reviewer for this question. We checked whether the precursor-positi
 
 **1. Experiment.** When an onset is annotated late, the window before it already contains the start of the anomaly, so the signal jumps a few steps before the annotated onset and not at it. The onset-continuity check of Tab. 8 looks for this pattern. For each event it compares the jump of the signal at the annotated onset with the jumps seen in normal operation of the same entity. An event is an onset jump when the jump at the onset is unusually large, as expected for a correct annotation. It is a boundary shift when the jump at the onset is ordinary but a large jump in the direction of the anomaly occurs a few steps earlier, as expected for a late annotation. Otherwise it is undetermined. On synthetic series the check labels 94.5% of late annotations as boundary shifts and 9.8% of correct ones (l.856–858). We applied it unchanged to the precursor-positive events of PSM and SWaT, and rerunning it on SMD reproduces Tab. 8.
 
-**2. Results.** Most precursor-positive events of PSM and SWaT look like late annotations, unlike those of SMD (Table B).
+**2. Results.** The check classifies 6 of the 7 precursor-positive events of PSM and 7 of the 9 of SWaT as boundary shifts, against 6 of 51 on SMD, so most precursor-positive events of PSM and SWaT look like late annotations (Table B).
 
 Table B- Precursor-positive events by the onset-continuity check
 | **Dataset** | Events | Onset jump | Boundary shift | Undetermined |
 | :--- | :---: | :---: | :---: | :---: |
-| SMD | 51 | 45 | 6 | 0 |
+| SMD | 51 | 38 | 6 | 7 |
 | PSM | 7 | 1 | **6** | 0 |
 | SWaT | 9 | 2 | **7** | 0 |
 
-In the boundary shifts the large jump lies 8 to 27 seconds before the annotated onset on SWaT and 4 to 41 minutes before it on PSM. On SMD 6 of 51 events are boundary shifts, close to the 9.8% the check assigns to correct annotations. The check is less reliable on PSM and SWaT, since events that change only after onset show an onset jump in 70% of cases on SMD but in 40% on PSM and 20% on SWaT. We therefore draw only the dataset-level conclusion that pre-onset evidence on PSM and SWaT cannot be separated from annotation offsets, so benchmark-level evidence rests mainly on SMD. The revision states this in §4.2 and adds Table B and the list of all 16 events to App. B.2.
+In the boundary shifts the large jump lies 8 to 27 seconds before the annotated onset on SWaT and 4 to 41 minutes before it on PSM. On SMD 6 of 51 events are boundary shifts, close to the 9.8% the check assigns to correct annotations. The check is less reliable on PSM and SWaT, since events that change only after onset show an onset jump in 70% of cases on SMD but in 40% on PSM and 20% on SWaT. We therefore draw only the dataset-level conclusion that pre-onset evidence on PSM and SWaT cannot be separated from annotation offsets, which adds to the sensitivity of their dataset-level significance to the placebo pool (App. B.2.2), so benchmark-level evidence rests mainly on SMD. The revision states this in §4.2 and adds Table B and the list of all 16 events to App. B.2.
 
 *(Continued in 3/4.)*
 
@@ -76,7 +85,7 @@ In the boundary shifts the large jump lies 8 to 27 seconds before the annotated 
 
 ---
 
-## 第 3/4 条 · 2812 字符
+## 第 3/4 条 · 2922 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
@@ -87,7 +96,7 @@ We thank the reviewer for this question. We checked whether the stronger results
 
 **1. Experiment.** On SMD we changed one factor at a time and kept everything else fixed. The training of iForest is either pooled over machines, as in Tab. 3, or per machine, as in Tab. 19, and iForest is the only detector with scores under both. The score of a window is either its mean over the 100 steps, as in Tab. 3, or its maximum over the final 50 steps, as in Tab. 17. The 51 precursor-positive events, the normal windows they are paired with, and the selection control are the same in all four settings. The selection control consists of the 355 normal windows that the test flags although no event follows. Since the precursor-positive events were also selected for looking different from normal operation, a detector shows precursor-specific discrimination only when its MPA on these events exceeds its MPA on the selection control.
 
-**2. Results.** No combination separates the precursor-positive events from the selection control (Table C).
+**2. Results.** With the events and normal references fixed, neither the training nor the score aggregation separates the precursor-positive events from the selection control, in any of the four combinations (Table C).
 
 Table C- iForest MPA on SMD under each training and score (51 precursor-positive events, 355 selection-control windows)
 | **Training, score** | Precursor events | Selection control | Difference [95% CI] |

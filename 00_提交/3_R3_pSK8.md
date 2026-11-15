@@ -68,7 +68,7 @@ Table F- Point-wise ROC AUC on SWaT against normal points, with all anomaly poin
 
 ---
 
-## 第 2/4 条 · 4944 字符
+## 第 2/4 条 · 4585 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
@@ -101,7 +101,7 @@ The reviewer is right that several decisions appear without their reason, or wit
 **3. Scales of 25 and 50 steps.** The candidate and reference windows of the larger scale together span the 100-step window used for MPA, so both analyses see the same interval (l.177–178).
 
 # 5. Windows after onset
-Setting $P _{e}(W) = [t _{e}, t _{e}+W)$ asks how quickly an anomaly becomes visible after it starts, which is early detection. A precursor is evidence before $t _{e}$, which is the condition an early-warning benchmark needs. The test already evaluates the reviewer's interval. An event whose pre-onset window is not significant while its equal-length post-onset window is belongs to class I (l.220–221), and 223 of the 293 benchmark events with a detected change are in this class (l.365). The remaining anomaly $A' _{e} = [t _{e}+W, u _{e}]$ would then be the target of a detection-delay metric. The same geometry appears in Tab. 6, where an onset annotated late moves post-onset evidence into the pre-onset window and turns 93% of precursor-free synthetic events into apparent precursors. The revision states this distinction in §3.1.
+It is possible, and the test already evaluates this interval, but it measures early detection rather than precursors. Setting $P _{e}(W) = [t _{e}, t _{e}+W)$ asks how quickly an anomaly becomes visible after it starts, which is early detection. A precursor is evidence before $t _{e}$, which is the condition an early-warning benchmark needs. The test already evaluates the reviewer's interval. An event whose pre-onset window is not significant while its equal-length post-onset window is belongs to class I (l.220–221), and 223 of the 293 benchmark events with a detected change are in this class (l.365). The remaining anomaly $A' _{e} = [t _{e}+W, u _{e}]$ would then be the target of a detection-delay metric. The same geometry appears in Tab. 6, where an onset annotated late moves post-onset evidence into the pre-onset window and turns 93% of precursor-free synthetic events into apparent precursors. The revision states this distinction in §3.1.
 
 # 6. Detection with models outside the descriptor family
 We agree that a descriptor test cannot guarantee that it catches all precursors, and §5 states this limit (l.463). We addressed the question in two ways. RQ2 already applies seven learned detectors, and all of them separate the 3W transitions from normal operation with MPA of at least 0.68, while none separates benchmark P windows with mean scores (Tab. 3). Following the reviewer's suggestion, we also replaced the descriptor family by a descriptor-free kernel test and reran it on every event with the placebo calibration unchanged. The revision adds the kernel test to App. B.2.
@@ -115,8 +115,6 @@ Table H- Events detected by the descriptor test and by the kernel test (placebo 
 | 3W, before transition start | 11 / 47 | **19 / 47** |
 | Five benchmarks | 70 / 500 | 36 / 500 |
 
-**2. Reading.** The kernel test is more sensitive than the descriptor test on the 3W transitions, where precursors are known to exist, and it finds fewer benchmark events. The sparsity of benchmark evidence therefore does not come from the choice of descriptors. Per dataset the kernel test detects 19 of 320 SMD, 4 of 35 MSL, 3 of 67 SMAP, 3 of 45 PSM and 7 of 33 SWaT events, and only SWaT exceeds its placebo rate ($p$ = 0.002). The two tests agree on 17 benchmark events.
-
 # References
 
 > [a] Arthur Gretton, Karsten M. Borgwardt, Malte J. Rasch, Bernhard Schölkopf, and Alexander Smola. A Kernel Two-Sample Test. JMLR, 2012.
@@ -128,11 +126,13 @@ Table H- Events detected by the descriptor test and by the kernel test (placebo 
 
 ---
 
-## 第 3/4 条 · 3858 字符
+## 第 3/4 条 · 4487 字符
 
 ▼▼▼ COPY FROM HERE ▼▼▼
 
 *(Continuation of 2/4.)*
+
+**2. Reading.** The kernel test is more sensitive than the descriptor test on the 3W transitions, where precursors are known to exist, and it finds fewer benchmark events. The sparsity of benchmark evidence therefore does not come from the choice of descriptors. Per dataset the kernel test detects 19 of 320 SMD, 4 of 35 MSL, 3 of 67 SMAP, 3 of 45 PSM and 7 of 33 SWaT events, and only SWaT exceeds its placebo rate ($p$ = 0.002). The two tests agree on 17 benchmark events.
 
 # 7. Absolute rejection rates by lead
 The reviewer is right. The two sentences at l.376–377, which are in §4.2, quote absolute rejection rates, whereas Fig. 4(b) shows only the excess over the placebo rate, and the 3W rates appear nowhere. Table I gives them, and the revision adds the full table for every dataset and lead to App. B.2 and states in the caption of Fig. 4 that it shows the excess.
@@ -148,15 +148,15 @@ Table I- Rejection rate by lead before onset (minutes for SMD and PSM, seconds f
 On SMD the rate halves from 0.159 to 0.075 within 10 minutes and reaches 0.056 at 50 minutes, close to the placebo rate of 0.047. On 3W it stays between 0.915 and 0.936 at every lead from 0 to 200 seconds.
 
 # 8. Validation of MPA
-Fig. 3(b) in §4.1 is a controlled validation of MPA, and the revision presents it as such. In synthetic events with known ground truth, every input-blind score (constant, random, time-only and post-onset-only) stays near 0.5, while a score that receives an increasing fraction of the injected precursor rises from 0.487 to 0.982. A metric for precursor discrimination needs both properties, no credit without pre-onset information and growth with that information. Point-adjusted F1 fails the first, since random alarms at matched rates reach 0.431 Shifted-warning F1 under PA, above every detector (Tab. 4). On the benchmarks, the onset-truncated AUC of answer 2 ranks the detectors as MPA does (Spearman 0.96 on SMD).
+Yes, in two ways, a controlled validation with known ground truth and a comparison with an onset-truncated AUC on the benchmarks. Fig. 3(b) in §4.1 is the controlled validation, and the revision presents it as such. In synthetic events with known ground truth, every input-blind score (constant, random, time-only and post-onset-only) stays near 0.5, while a score that receives an increasing fraction of the injected precursor rises from 0.487 to 0.982. A metric for precursor discrimination needs both properties, no credit without pre-onset information and growth with that information. Point-adjusted F1 fails the first, since random alarms at matched rates reach 0.431 Shifted-warning F1 under PA, above every detector (Tab. 4). On the benchmarks, the onset-truncated AUC of answer 2 ranks the detectors as MPA does (Spearman 0.96 on SMD).
 
 Table G lists the selection control, which is the set of normal windows that the test flags. A detector that scores deviations already separates these windows from other normal windows, so separation specific to precursor windows must exceed this level (l.412–413).
 
 # 9. Interval-averaged F1
-Averaging scores over the interval removes the point-wise problem, but F1 still requires a threshold and counts alarms, so its value depends on the alarm rate. At a 5% point-wise rate, independent random alarms hit a 100-step interval with probability about 0.99, and under PA they outscore every detector (l.453–455, Tab. 4). MPA is the threshold-free form of the reviewer's suggestion. It compares the averaged score of each pre-onset interval with the averaged scores of matched normal intervals, and its chance level is 0.5 for any score (l.234). The revision adds this explanation to §3.3.
+F1 can be computed on interval-averaged scores, and this removes the point-wise problem, but F1 still requires a threshold and counts alarms, so its value depends on the alarm rate. At a 5% point-wise rate, independent random alarms hit a 100-step interval with probability about 0.99, and under PA they outscore every detector (l.453–455, Tab. 4). MPA is the threshold-free form of the reviewer's suggestion. It compares the averaged score of each pre-onset interval with the averaged scores of matched normal intervals, and its chance level is 0.5 for any score (l.234). The revision adds this explanation to §3.3.
 
 # 10. Precursors on real time series
-The revision adds a figure to App. B.2 with nine real events drawn at random with a fixed seed, two P, two O and one I event from SMD, and two detected and two undetected 3W transitions. Each panel shows the onset, the window evaluated by the test and the three channels whose mean changes most between the last 100 steps and the 100 steps before, together with the verdict of the test.
+Yes. The revision adds a figure to App. B.2 with nine real events drawn at random with a fixed seed, two P, two O and one I event from SMD, and two detected and two undetected 3W transitions. Each panel shows the onset, the window evaluated by the test and the three channels whose mean changes most between the last 100 steps and the 100 steps before, together with the verdict of the test.
 
 # 11. Definition of onset
 The onset $t _{e}$ is the first time step of an annotated anomaly interval $A _{e} = [t _{e}, u _{e}]$ (l.153). Pre-onset refers to times before $t _{e}$, and near-onset to the final steps of the 100-step pre-onset window. The revision gives these definitions in the abstract and in the first paragraph of §1.
