@@ -331,6 +331,13 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line-soft); }
 /* 线程级：一次切换本线程全部帖子 */
 .thread-bar { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); }
 .thread-bar .spacer { flex: 1; }
+/* 「只看没答完」：答完的节折成一行灰条，点开再看 */
+.sec-folded { display: none !important; }
+.sec-fold { margin: 6px 0; padding: 5px 10px; border: 1px dashed var(--line); border-radius: var(--radius);
+  font-size: 12.5px; color: var(--muted); cursor: pointer; background: var(--surface-2); }
+.sec-fold:hover { color: var(--ink); }
+.sec-fold b { color: var(--accept); font-weight: 600; }
+.tool.on { background: var(--ikb); color: #fff; border-color: var(--ikb); }
 /* ── 右侧面板：固定在屏幕右边、卡片外面。正文读到哪一节，就显示哪一节的审稿人原话（中英）、逐节评审和批注。
       它不插进回复正文，所以回复的宽度和排版与没有面板时完全一样 ── */
 .stage.with-panel { padding-right: 424px; }   /* 面板宽 370 + 间隔 24 + 原有 30 */
@@ -714,7 +721,8 @@ function drawRail() {
     const sub = document.createElement("span");
     sub.className = "sub";
     const n = t.posts.length, d = t.done.filter(Boolean).length;
-    sub.textContent = (n ? `${d}/${n} 已发 · ${t.posts.reduce((a, p) => a + countChars(p), 0)} 字符` : "空白草稿板") + openNotesLabel(t.id);
+    const oc = openSecCount(t);
+    sub.textContent = (n ? `${d}/${n} 已发 · ${t.posts.reduce((a, p) => a + countChars(p), 0)} 字符` : "空白草稿板") + (oc ? ` · 未答完 ${oc} 节` : "") + openNotesLabel(t.id);
 
     b.append(who, chip, sub);
     b.onclick = () => { active = t.id; drawRail(); drawThread(); window.scrollTo({ top: 0 }); savePos(); };
@@ -800,6 +808,12 @@ function drawThread() {
     const qb = Object.assign(document.createElement("button"), { type: "button", className: "tool", textContent: showQ ? "隐藏右栏" : "显示右栏" });
     qb.onclick = () => { showQ = !showQ; try { localStorage.setItem(Q_KEY, showQ ? "1" : "0"); } catch (e) {} drawThread(); };
     bar.append(qb);
+  }
+  if (t.sectionNotes) {
+    const fb = Object.assign(document.createElement("button"), { type: "button", className: "tool" + (ONLY_OPEN ? " on" : ""),
+      textContent: ONLY_OPEN ? "显示全部" : "只看没答完", title: "判断不是「答到」、还差什么不是「无」、或有没解决的批注，就算没答完" });
+    fb.onclick = () => { ONLY_OPEN = !ONLY_OPEN; UNFOLDED.clear(); try { localStorage.setItem(F_KEY, ONLY_OPEN ? "1" : "0"); } catch (e) {} drawThread(); };
+    bar.append(fb);
   }
   stageEl.append(bar);
   paintBackend();
@@ -1032,6 +1046,42 @@ function paintBackend() {
    批注每条一个文件（06_网站/批注/），三个人各写各的，git 合并不冲突。 */
 const Q_KEY = STORE + ":q";
 let showQ = true;
+/* 只看没答完：判断不是「答到」、还差什么里有真缺口（备注 / 提醒不算），或这一节有没解决的批注 */
+const F_KEY = STORE + ":only-open";
+let ONLY_OPEN = false;
+try { ONLY_OPEN = localStorage.getItem(F_KEY) === "1"; } catch (e) {}
+const UNFOLDED = new Set();                       // 折叠状态下点开看的节
+const realGaps = sn => (sn && sn.missing || []).filter(x => !/^(备注|提醒)/.test(x));
+function reviewOpen(t, sec) {
+  const sn = t.sectionNotes && t.sectionNotes[sec];
+  return !sn || sn.verdict !== "答到" || realGaps(sn).length > 0;
+}
+function openSecCount(t) {
+  if (!t.sectionNotes) return 0;
+  const secs = new Set([...Object.keys(t.sectionNotes), ...Object.keys(t.questions || {})]);
+  return [...secs].filter(s => reviewOpen(t, s)).length;
+}
+function applyFilter(t) {
+  stageEl.querySelectorAll(".sec-fold").forEach(e => e.remove());
+  stageEl.querySelectorAll(".sec-folded").forEach(e => e.classList.remove("sec-folded"));
+  if (!ONLY_OPEN || !t.sectionNotes) return;
+  const roots = NOTES.on ? threadNotes(t.id).filter(n => !n.resolved) : [];
+  const noteSecs = new Set(SECMAP.filter(x => roots.some(n => n.key === x.key)).map(x => x.sec));
+  const open = sec => /^\d+$/.test(sec) && (reviewOpen(t, sec) || noteSecs.has(sec));
+  let prev = null;
+  SECMAP.forEach(x => {
+    if (open(x.sec) || UNFOLDED.has(x.sec)) { prev = null; return; }
+    x.blk.classList.add("sec-folded");
+    if (prev === x.sec && x.blk.previousElementSibling && x.blk.previousElementSibling.classList.contains("sec-folded")) return;
+    prev = x.sec;
+    const bar = document.createElement("div"); bar.className = "sec-fold";
+    const h = x.blk.tagName === "H1" ? x.blk.textContent.trim() : (x.sec === "intro" ? "开场" : "续上一节");
+    if (/^\d+$/.test(x.sec)) bar.append(Object.assign(document.createElement("b"), { textContent: "✓ 已答完" }), `　${h}　（点开看）`);
+    else bar.append(`${h}（已折叠，点开看）`);
+    bar.onclick = () => { UNFOLDED.add(x.sec); layoutSide(); };
+    x.blk.before(bar);
+  });
+}
 try { showQ = localStorage.getItem(Q_KEY) !== "0"; } catch (e) {}
 const NOTES = { on: false, me: null, people: [], events: [] };
 const ME_KEY = STORE + ":me";
@@ -1193,7 +1243,7 @@ function buildSecMap() {
 function currentSec() {
   if (PENDING) { const hit = SECMAP.find(x => x.key === PENDING.key); if (hit) return hit.sec; }   // 正在写批注：停在那一节
   let s = SECMAP.length ? SECMAP[0].sec : null;
-  for (const x of SECMAP) { if (x.blk.getBoundingClientRect().top <= 160) s = x.sec; else break; }
+  for (const x of SECMAP) { if (x.blk.classList.contains("sec-folded")) continue; if (x.blk.getBoundingClientRect().top <= 160) s = x.sec; else break; }
   return s;
 }
 function buildPanel(t, s) {
@@ -1251,6 +1301,7 @@ function layoutSide() {
   const t = DATA.threads.find(x => x.id === active);
   if (!t) return;
   buildSecMap();
+  applyFilter(t);
   updatePanel(true);
   applyHighlights(t);
 }
