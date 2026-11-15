@@ -5,6 +5,7 @@
 - `api/data.js`：登录后返回全部回复稿和批注（每次从 GitHub 现读）。
 - `api/post.js`：保存一份回复稿。先读 GitHub 上的最新版，按条合并别人同时的改动，再提交；提交作者是「名字（网页）」。
 - `api/notes.js`：写一条批注，一条一个文件。
+- `api/health.js`：不用口令的体检，只回答 token 能不能读到仓库、口令设没设。登不进去时先打开 `/api/health` 看。
 - `api/_lib.js`：口令、GitHub 读写、md 分条文件的解析与重建（格式与 `sync.py` 一致）、合并规则。
 - `index.html`、`api/_static.js`：由 `06_网站/build_site.py` 生成（跑 `sync.py` 时自动更新），不进 git。页面里不含任何稿件内容和论文信息，登录后才取。
 
