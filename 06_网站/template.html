@@ -6,7 +6,7 @@ __KATEX_CSS__
 :root {
   color-scheme: light dark;
 
-  /* Klein 模型 → Yves Klein IKB 作为强调色 */
+  /* 强调色：IKB 蓝 */
   --ikb:        #002FA7;
   --ikb-soft:   #E7EBF8;
   --ground:     #E9ECF2;
@@ -331,7 +331,7 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line-soft); }
 /* 线程级：一次切换本线程全部帖子 */
 .thread-bar { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); }
 .thread-bar .spacer { flex: 1; }
-/* ── 每节回答旁边：这一节对应的审稿人原话（中英）+ 批注（照 Klein 工作台）── */
+/* ── 每节回答旁边：这一节对应的审稿人原话（中英）+ 批注 ── */
 .wrap.has-side { max-width: 1320px; }
 .post { overflow: clip; }                 /* clip 不建滚动容器，右栏的 sticky 才能跟着页面停住 */
 .sec { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; align-items: start; margin: 4px 0 10px; }
@@ -343,7 +343,7 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line-soft); }
   margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--surface-2); font-size: 12.5px; line-height: 1.55; display: flex; flex-direction: column; gap: 10px;
 }
-.sec-aside .qa-tag { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; color: var(--muted); }   /* 不转大写：审稿人 ID 区分大小写（wxGK） */
+.sec-aside .qa-tag { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; color: var(--muted); }   /* 不转大写：审稿人 ID 区分大小写 */
 .sec-aside .qa-item { border-left: 3px solid var(--ikb); padding-left: 9px; display: flex; flex-direction: column; gap: 5px; }
 .sec-aside .qa-item > b { font-family: var(--mono); color: var(--ikb); font-size: 12px; }
 .sec-aside .qa-item .md { font-size: 12.5px; }
@@ -475,6 +475,7 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line-soft); }
 <script>__MARKED_JS__</script>
 <script>
 const DATA = __DATA__;
+const WEB = !!window.__WEB_DATA__;     // 线上网页版（Vercel）：稿子从 GitHub 读，改动自动存回 GitHub
 const LIMIT = 5000;
 const STORE = "precursor-iclr27-rebuttal-v1";
 const MODES = [["view", "渲染"], ["src", "源码"], ["split", "对照"]];
@@ -487,6 +488,7 @@ let diskState = "";             // "" | "saving" | "saved" | "error"
 const readLocal = () => { try { return JSON.parse(localStorage.getItem(STORE) || "{}"); } catch (e) { return {}; } };
 
 async function loadStore() {
+  if (WEB) { backend = "web"; saved = readLocal(); return; }   // 网页版只在浏览器里记显示模式和「已发」
   try {
     const r = await fetch("api/edits", { cache: "no-store" });
     if (r.ok) {
@@ -529,12 +531,51 @@ function hydrate() {
   if (MODES.some(m => m[0] === saved.__mode)) defaultMode = saved.__mode;
   DATA.threads.forEach(t => {
     const s = saved[t.id];
-    t.posts = (s && Array.isArray(s.posts)) ? s.posts.slice() : t.origin ? t.origin.slice() : t.posts.slice();
+    t.posts = (!WEB && s && Array.isArray(s.posts)) ? s.posts.slice() : t.origin ? t.origin.slice() : t.posts.slice();
+    if (WEB && t.origin) t.base = t.posts.slice();             // 上次和 GitHub 对齐时的版本，合并用
     t.done  = (s && Array.isArray(s.done))  ? s.done.slice()  : t.posts.map(() => false);
     while (t.done.length < t.posts.length) t.done.push(false);
   });
 }
-const snapshot = t => { saved[t.id] = { posts: t.posts, done: t.done }; persist(); };
+const snapshot = t => { saved[t.id] = { posts: t.posts, done: t.done }; persist(); if (WEB) webSave(t); };
+
+/* 网页版：停手 1.5 秒后把这份稿子存回 GitHub。服务端按条合并别人同时的改动，合并进来的条目这里也补上。 */
+const webTimers = {};
+let webNote = "";
+function webSave(t) {
+  if (!t.base) return;                                         // 草稿板没有对应文件，只存在浏览器里
+  clearTimeout(webTimers[t.id]);
+  diskState = "saving"; paintBackend();
+  webTimers[t.id] = setTimeout(async () => {
+    const sent = t.posts.slice();
+    if (sent.length === t.base.length && sent.every((x, i) => x === t.base[i])) { diskState = "saved"; paintBackend(); return; }
+    try {
+      const r = await fetch("api/post", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ thread: t.id, base: t.base, posts: sent }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { diskState = "error"; webNote = d.error || String(r.status); paintBackend(); toast("没存上：" + webNote); return; }
+      t.base = d.posts.slice();
+      const untouched = t.posts.length === sent.length && t.posts.every((x, i) => x === sent[i]);
+      let changed = false;
+      if (d.posts.length !== sent.length) {
+        if (untouched) { t.posts = d.posts.slice(); changed = true; }
+      } else {
+        d.merged.forEach(i => { if (t.posts[i] === sent[i]) { t.posts[i] = d.posts[i]; changed = true; } });
+      }
+      if (changed) {
+        while (t.done.length < t.posts.length) t.done.push(false);
+        t.done.length = t.posts.length;
+        saved[t.id] = { posts: t.posts, done: t.done }; persist();
+        const typing = document.activeElement && document.activeElement.tagName === "TEXTAREA";
+        if (!typing) { drawRail(); if (t.id === active) drawThread(); }
+        toast(typing ? "别人刚改了这份稿子的其他条目，停手后点「刷新」看最新" : "已合并别人刚改的第 " + d.merged.map(i => i + 1).join("、") + " 条");
+      }
+      if (d.conflicts.length) toast(d.conflicts[0] === "all" ? "你和别人同时增删了帖子，存的是你的版本，对方那版在 GitHub 历史里"
+        : "第 " + d.conflicts.map(i => i + 1).join("、") + " 条你和别人同时改了，存的是你的版本，对方那版在 GitHub 历史里");
+      diskState = "saved"; webNote = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }); paintBackend();
+    } catch (e) { diskState = "error"; webNote = "网络"; paintBackend(); }
+  }, 1500);
+}
 
 /* ── Markdown + KaTeX（OpenReview 用的就是这套）── */
 function renderMarkdown(src) {
@@ -617,7 +658,7 @@ function restorePos(pos) {
   window.scrollTo({ top: Math.max(0, y) });
 }
 
-// ICLR 2027 量表：1 Clear rejection · 2 Weak rejection · 3 Weak acceptance（最高几分未核）
+// 评分量表：1 Clear rejection · 2 Weak rejection · 3 Weak acceptance（最高几分未核）
 function ratingClass(r) { return !r ? "rm" : r >= 3 ? "r4" : "r3"; }
 
 function drawRail() {
@@ -947,6 +988,12 @@ document.getElementById("themeBtn").onclick = () => {
 
 function paintBackend() {
   document.querySelectorAll(".save-hint").forEach(el => {
+    if (backend === "web") {
+      el.textContent = diskState === "saving" ? "保存中…" : diskState === "error" ? `⚠ 没存上（${webNote}），再改一下会重试`
+        : diskState === "saved" ? `已存到 GitHub · ${webNote}` : "改动停手 1.5 秒后自动存到 GitHub";
+      el.style.color = diskState === "error" ? "var(--danger)" : "";
+      return;
+    }
     const disk = backend === "disk";
     el.textContent = !disk ? "改动只存在这个浏览器（没起 serve.py）"
       : diskState === "error" ? "⚠ 存盘失败，看一眼 serve.py 的终端"
@@ -978,7 +1025,7 @@ async function loadNotes() {
     const d = await r.json();
     NOTES.on = true; NOTES.people = d.people || []; NOTES.events = d.events || [];
     let saved = null; try { saved = localStorage.getItem(ME_KEY); } catch (e) {}
-    NOTES.me = saved && NOTES.people.some(p => p.id === saved) ? saved : (d.me || null);
+    NOTES.me = WEB ? (d.me || null) : saved && NOTES.people.some(p => p.id === saved) ? saved : (d.me || null);   // 网页版以登录时选的身份为准
   } catch (e) { /* 没起 serve.py：批注不可用 */ }
 }
 const personIdx = id => Math.max(0, NOTES.people.findIndex(p => p.id === id)) % 3;
@@ -1066,7 +1113,7 @@ function noteItem(t, n, rerender) {
   return it;
 }
 /* 正文按「# 标题」切成一节一节：左边是回答，右边是这一节对应的审稿人原话（中英）和批注。
-   开头致谢、References 也各算一节；右栏没东西的节占满整行，和 Klein 工作台一样。 */
+   开头致谢、References 也各算一节；右栏没东西的节占满整行。 */
 const shortLabel = x => x.replace(/^Weakness\s*/i, "W");
 function sectionAside(t, qs) {
   const a = document.createElement("aside"); a.className = "sec-aside";
@@ -1224,7 +1271,7 @@ function notesControls() {
   sel.append(new Option("选择…", ""));
   NOTES.people.forEach(p => sel.append(new Option(p.label, p.id)));
   sel.value = NOTES.me || "";
-  sel.onchange = () => { NOTES.me = sel.value || null; try { localStorage.setItem(ME_KEY, sel.value); } catch (e) {} layoutSide(); };
+  sel.onchange = () => { NOTES.me = sel.value || null; try { localStorage.setItem(ME_KEY, sel.value); } catch (e) {} if (window.__setWho) window.__setWho(sel.value); layoutSide(); };
   const btn = Object.assign(document.createElement("button"), { type: "button", className: "tool", textContent: "同步批注" });
   btn.onclick = async () => {
     btn.disabled = true; btn.textContent = "同步中…";
@@ -1237,7 +1284,8 @@ function notesControls() {
     } catch (e) { toast("同步没成功：serve.py 没在运行"); }
     finally { btn.disabled = false; btn.textContent = "同步批注"; }
   };
-  wrap.append(Object.assign(document.createElement("span"), { textContent: "批注身份" }), sel, btn);
+  if (WEB) { btn.textContent = "刷新"; btn.onclick = () => location.reload(); }   // 网页版没有 git，刷新就是从 GitHub 重读
+  wrap.append(Object.assign(document.createElement("span"), { textContent: WEB ? "我是" : "批注身份" }), sel, btn);
   return wrap;
 }
 

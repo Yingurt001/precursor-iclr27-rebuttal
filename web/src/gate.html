@@ -1,0 +1,67 @@
+<!-- 网页版的入口：先输口令、选「我是谁」，拿到数据后才把工作台的脚本跑起来。页面本身不含任何稿件内容。 -->
+<style>
+.gate { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--ground); padding: 16px; }
+.gate-card { width: min(360px, 100%); display: grid; gap: 12px; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); font: 14px/1.5 var(--sans); color: var(--ink); }
+.gate-title { font: 600 18px/1.3 var(--serif, var(--sans)); }
+.gate-card label { display: grid; gap: 4px; font-size: 12.5px; color: var(--ink-2); }
+.gate-card label[hidden] { display: none; }
+.gate-card input, .gate-card select { font: inherit; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface-2); color: var(--ink); }
+.gate-card button { justify-self: start; }
+.gate-msg { min-height: 1.4em; font-size: 12.5px; color: var(--muted); }
+</style>
+<div class="gate" id="gate">
+  <form class="gate-card" id="gateForm" autocomplete="on">
+    <div class="gate-title">Rebuttal 工作台</div>
+    <label>口令<input type="password" id="gatePass" autocomplete="current-password" required></label>
+    <label id="gateWho" hidden>我是<select id="gateSel"></select></label>
+    <button type="submit" class="tool">进入</button>
+    <div class="gate-msg" id="gateMsg" role="alert"></div>
+  </form>
+</div>
+<script>
+(function () {
+  const K = "rb-web-auth";
+  let st = {};
+  try { st = JSON.parse(localStorage.getItem(K) || "{}"); } catch (e) {}
+  const save = () => { try { localStorage.setItem(K, JSON.stringify(st)); } catch (e) {} };
+  window.__setWho = id => { st.who = id; save(); };
+  const raw = window.fetch.bind(window);
+  window.fetch = (u, o = {}) => {                         // 工作台调 api/… 时自动带上口令和身份
+    if (typeof u === "string" && u.startsWith("api/")) o = { ...o, headers: { ...(o.headers || {}), "x-passcode": st.pass || "", "x-who": st.who || "" } };
+    return raw(u, o);
+  };
+  const $ = id => document.getElementById(id);
+  const msg = t => { $("gateMsg").textContent = t; };
+  function start(d) {
+    window.__WEB_DATA__ = { threads: d.threads };
+    $("venue").textContent = d.meta.venue;
+    $("ptitle").textContent = d.meta.title;
+    $("gate").remove();
+    const s = document.createElement("script");
+    s.textContent = $("app").textContent;
+    document.body.append(s);
+  }
+  async function go() {
+    msg("载入中…");
+    let r, d;
+    try { r = await fetch("api/data", { cache: "no-store" }); d = await r.json().catch(() => ({})); }
+    catch (e) { msg("连不上服务器，检查一下网络"); return; }
+    if (r.status === 401) { msg(st.pass ? "口令不对" : ""); delete st.pass; save(); $("gatePass").focus(); return; }
+    if (!r.ok) { msg("载入失败：" + (d.error || r.status)); return; }
+    const people = d.people || [];
+    if (!people.some(p => p.id === st.who)) {
+      const sel = $("gateSel");
+      sel.replaceChildren(new Option("选择…", ""), ...people.map(p => new Option(p.label, p.id)));
+      $("gateWho").hidden = false;
+      msg("选一下你是谁：改动和批注会记在这个名字下");
+      sel.onchange = () => { if (sel.value) { st.who = sel.value; save(); go(); } };
+      return;
+    }
+    start(d);
+  }
+  $("gateForm").onsubmit = e => { e.preventDefault(); st.pass = $("gatePass").value; save(); go(); };
+  if (st.pass) go(); else $("gatePass").focus();
+})();
+</script>

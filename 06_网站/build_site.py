@@ -186,6 +186,7 @@ def main():
               + (f" ⚠️ 超限: {over}" if over else ""))
         threads.append({
             "id": tid, "group": group, "short": short, "title": title, "reviewer": note_key or None,
+            "file": f"00_提交/{fname}",
             "rating": note.get("rating"), "noteId": note.get("noteId"),
             "review": {"fields": note.get("fields", {}), "blocks": note.get("blocks", [])} if note else None,
             "posts": posts, "origin": posts,
@@ -193,7 +194,7 @@ def main():
 
     threads.append({
         "id": "scratch", "group": "工具", "short": "草稿板",
-        "title": "草稿板 · 随手粘贴渲染", "rating": None, "noteId": None,
+        "title": "草稿板 · 随手粘贴渲染", "rating": None, "noteId": None, "file": None,
         "review": None, "posts": [""], "origin": None,
     })
 
@@ -201,18 +202,59 @@ def main():
     attach_questions(threads)
 
     data = json.dumps({"threads": threads}, ensure_ascii=False)
-    html = (HERE / "template.html").read_text(encoding="utf-8")
+    base = (HERE / "template.html").read_text(encoding="utf-8")
     for token, value in [
         ("__KATEX_CSS__", inline_katex_css()),
         ("__KATEX_JS__", (ASSETS / "katex.min.js").read_text(encoding="utf-8")),
         ("__MARKED_JS__", (ASSETS / "marked.min.js").read_text(encoding="utf-8")),
-        ("__DATA__", data.replace("</", "<\\/")),
     ]:
-        html = html.replace(token, value, 1)
+        base = base.replace(token, value, 1)
+    html = base.replace("__DATA__", data.replace("</", "<\\/"), 1)
 
     out = HERE / "index.html"
     out.write_text(html, encoding="utf-8")
     print(f"\n✅ {out}  ({out.stat().st_size / 1024:.0f} KB)")
+    build_web(base, threads)
+
+
+def build_web(base, threads):
+    """线上网页版（../web/，部署到 Vercel）：页面里不放任何稿件、审稿内容和论文标题，登录后才从 /api/data 取。
+    审稿原文、审稿人原话、线程清单写进 web/api/_static.js（只有服务端读得到）；回复稿和批注由服务端从 GitHub 现读。"""
+    web = HERE.parent / "web"
+    if not (web / "src" / "gate.html").exists():
+        return
+    import subprocess
+    url = subprocess.run(["git", "-C", str(HERE.parent), "remote", "get-url", "origin"], capture_output=True, text=True).stdout.strip()
+    m = re.search(r"github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$", url)
+    if not m:
+        print("  ⚠️ 网页版：读不到 GitHub 仓库地址，跳过")
+        return
+    venue = re.search(r'<span class="venue">(.*?)</span>', base).group(1)
+    title = re.search(r"<h1>(.*?)</h1>", base).group(1)
+    people = json.loads((HERE / "people.json").read_text(encoding="utf-8")).get("people", [])
+    static = {
+        "repo": {"owner": m.group(1), "name": m.group(2), "branch": "main"},
+        "notesDir": "06_网站/批注",
+        "meta": {"venue": venue, "title": title},
+        "people": [{k: p[k] for k in ("id", "label", "github") if k in p} for p in people],
+        "threads": [{k: v for k, v in t.items() if k not in ("posts", "origin")} for t in threads],
+    }
+    (web / "api" / "_static.js").write_text(
+        "// 由 06_网站/build_site.py 生成，别手改。只在服务端用，不会发给没登录的浏览器。\n"
+        "module.exports = " + json.dumps(static, ensure_ascii=False, indent=1) + ";\n", encoding="utf-8")
+    page = (base
+            .replace(re.search(r"<title>.*?</title>", base).group(0), '<title>Rebuttal 工作台</title>\n<meta name="robots" content="noindex, nofollow">', 1)
+            .replace(f'<span class="venue">{venue}</span>', '<span class="venue" id="venue"></span>', 1)
+            .replace(f"<h1>{title}</h1>", '<h1 id="ptitle">Rebuttal 工作台</h1>', 1)
+            .replace("<script>\nconst DATA = __DATA__;", '<script type="text/plain" id="app">\nconst DATA = window.__WEB_DATA__;', 1)
+            .replace('const STORE = "precursor-iclr27-rebuttal-v1";', 'const STORE = "rb-ws-v1";', 1))
+    for leak in ["__DATA__", title, venue, "precursor-iclr27"] + [t["reviewer"] for t in threads if t.get("reviewer")]:
+        assert leak not in page, f"网页版里漏了能认出项目的字样：{leak}"
+    for word in ["Klein", "ICLR", "Precursor", "OpenReview ID"]:      # 字体的 base64 里可能碰巧有这些字母，只查独立成词的
+        assert not re.search(rf"(?<![A-Za-z0-9+/=]){word}(?![A-Za-z0-9+/=])", page), f"网页版里有「{word}」，公开页面别留能认出作者或投稿的字样"
+    page += "\n" + (web / "src" / "gate.html").read_text(encoding="utf-8")
+    (web / "index.html").write_text(page, encoding="utf-8")
+    print(f"✅ 网页版 {web / 'index.html'}（部署：cd web && vercel deploy --prod）")
 
 
 if __name__ == "__main__":
